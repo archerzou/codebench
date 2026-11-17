@@ -1,0 +1,197 @@
+# CodeBench full stack — see docs/guide/05-docker-local-stack.md
+#
+# Profiles keep `up` working while the project is built phase by phase:
+#   (none)    traefik, postgres, redis, nats, observability      <- infra, always on
+#   app       api, web, marketing                                <- Phase 1
+#   grading   worker, sandbox-daemon                             <- Phase 2
+#   backup    db-backup                                          <- Phase 4
+#
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env --profile app --profile grading up -d --build
+#
+# Only Traefik publishes a port. Networks act as ACLs: the browser reaches only Traefik,
+# the worker never sees Postgres, sandboxes (started by sandbox-daemon) have no network at all.
+name: codebench
+
+x-otel-env: &otel-env
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://observability:4317
+  OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+
+services:
+  traefik:
+    image: traefik:v3.3
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=codebench_edge
+      - --entrypoints.web.address=:80
+      - --api.dashboard=true
+    ports: ["80:80"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro   # Traefik reads labels only; trusted, local-only
+    networks: [edge]
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.dashboard.rule=Host(`traefik.codebench.localhost`)
+      - traefik.http.routers.dashboard.service=api@internal
+
+  # ---------------------------------------------------------------- app (Phase 1)
+  marketing:
+    profiles: [app]
+    image: ghcr.io/${GHCR_OWNER}/codebench-marketing:${TAG:-latest}
+    build:
+      context: ../apps/marketing
+      args:
+        SITE_URL: ${MARKETING_URL}
+        APP_URL: ${APP_URL}
+    networks: [edge]
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.marketing.rule=Host(`codebench.localhost`)
+      - traefik.http.services.marketing.loadbalancer.server.port=80
+
+  web:
+    profiles: [app]
+    image: ghcr.io/${GHCR_OWNER}/codebench-web:${TAG:-latest}
+    build: { context: ../apps/web }
+    environment:
+      API_URL: ${API_URL}
+      CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
+      MARKETING_URL: ${MARKETING_URL}
+    networks: [edge]
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.web.rule=Host(`app.codebench.localhost`)
+      - traefik.http.services.web.loadbalancer.server.port=80
+
+  api:
+    profiles: [app]
+    image: ghcr.io/${GHCR_OWNER}/codebench-api:${TAG:-latest}
+    build: { context: .., dockerfile: src/Web.Api/Dockerfile }
+    environment:
+      <<: *otel-env
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_HTTP_PORTS: "8080"
+      OTEL_SERVICE_NAME: codebench-api
+      ConnectionStrings__Database: Host=postgres;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      ConnectionStrings__Redis: redis:6379,password=${REDIS_PASSWORD}
+      ConnectionStrings__Nats: nats://${NATS_USER}:${NATS_PASSWORD}@nats:4222
+      Clerk__Issuer: ${CLERK_ISSUER}
+      Clerk__SecretKey: ${CLERK_SECRET_KEY}
+      Clerk__WebhookSecret: ${CLERK_WEBHOOK_SECRET}
+      Clerk__AuthorizedParties__0: ${APP_URL}
+      Cors__AllowedOrigins__0: ${APP_URL}
+      Cors__AllowedOrigins__1: ${MARKETING_URL}
+      Admin__BootstrapEmails__0: ${ADMIN_BOOTSTRAP_EMAIL}
+      Admin__ApiKey: ${ADMIN_API_KEY}
+      Payments__Provider: ${PAYMENTS_PROVIDER:-none}
+      # Template JWT issuing — removed in Phase 1 when Clerk validation replaces it.
+      Jwt__Secret: ${JWT_SECRET}
+      Jwt__Issuer: codebench
+      Jwt__Audience: codebench-app
+      Jwt__ExpirationInMinutes: "60"
+    volumes:
+      - ../problems:/problems:ro  # seed data: `docker compose run --rm api --seed`
+    depends_on:
+      postgres: { condition: service_healthy }
+      nats: { condition: service_started }
+      redis: { condition: service_started }
+    networks: [edge, backend]
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.api.rule=Host(`api.codebench.localhost`)
+      - traefik.http.services.api.loadbalancer.server.port=8080
+
+  # ------------------------------------------------------------ grading (Phase 2)
+  worker:
+    profiles: [grading]
+    image: ghcr.io/${GHCR_OWNER}/codebench-worker:${TAG:-latest}
+    build: { context: .., dockerfile: src/Worker/Dockerfile }
+    environment:
+      <<: *otel-env
+      OTEL_SERVICE_NAME: codebench-worker
+      ConnectionStrings__Nats: nats://${NATS_USER}:${NATS_PASSWORD}@nats:4222
+      DOCKER_HOST: tcp://sandbox-daemon:2375
+      Sandbox__Runtime: ${SANDBOX_RUNTIME:-runc}
+      Sandbox__MaxParallel: ${SANDBOX_MAX_PARALLEL:-4}
+      Sandbox__Images__algorithms: ghcr.io/${GHCR_OWNER}/codebench-sandbox-algorithms:${TAG:-latest}
+      Sandbox__Images__database: ghcr.io/${GHCR_OWNER}/codebench-sandbox-database:${TAG:-latest}
+      Sandbox__Registry__Username: ${GHCR_USERNAME}
+      Sandbox__Registry__Password: ${GHCR_READ_TOKEN}
+      # deliberately NO database, Clerk or payment values
+    depends_on: [nats, sandbox-daemon]
+    networks: [backend, exec]
+
+  sandbox-daemon:
+    profiles: [grading]
+    image: docker:27-dind
+    privileged: true                    # required by Docker-in-Docker
+    environment:
+      DOCKER_TLS_CERTDIR: ""            # plain TCP on the internal exec network
+    command: ["--host=tcp://0.0.0.0:2375"]
+    volumes: [dind-data:/var/lib/docker]
+    networks: [exec, egress]
+
+  # ------------------------------------------------------------------ infra
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      retries: 10
+    networks: [backend]
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    networks: [backend]
+
+  nats:
+    image: nats:2
+    command: ["-js", "-sd", "/data", "-m", "8222", "--user", "${NATS_USER}", "--pass", "${NATS_PASSWORD}"]
+    volumes: [natsdata:/data]
+    networks: [backend]
+
+  # Grafana + Loki + Tempo + Prometheus + OTel Collector in one image (from the template).
+  # Phase 4 may split this into the separate services listed in docs/guide/05.
+  observability:
+    image: grafana/otel-lgtm:0.29.1
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+    volumes: [lgtmdata:/data]
+    networks: [edge, backend]
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.grafana.rule=Host(`grafana.codebench.localhost`)
+      - traefik.http.services.grafana.loadbalancer.server.port=3000
+
+  # ------------------------------------------------------------- backup (Phase 4)
+  db-backup:
+    profiles: [backup]
+    image: postgres:17
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          pg_dump -h postgres -U ${POSTGRES_USER} ${POSTGRES_DB} | gzip > /backups/codebench-$$(date +%F).sql.gz
+          find /backups -name '*.sql.gz' -mtime +7 -delete
+          sleep 86400
+        done
+    volumes: [../backups:/backups]
+    depends_on: { postgres: { condition: service_healthy } }
+    networks: [backend]
+
+networks:
+  edge: {}
+  backend: {}
+  exec: { internal: true }   # no route to the internet; only worker <-> sandbox-daemon
+  egress: {}                 # lets the sandbox daemon pull images
+
+volumes: { pgdata: {}, natsdata: {}, dind-data: {}, lgtmdata: {} }

@@ -1,0 +1,70 @@
+# API contract (CodeBench)
+
+Our own design, consolidated from [guide/02-backend-api.md](guide/02-backend-api.md) and
+[guide/09-seed-data-and-admin.md](guide/09-seed-data-and-admin.md). Errors are RFC 7807 ProblemDetails
+(`CustomResults.Problem`); error codes are `"{FeaturePlural}.{Reason}"`. Writes that create work honour
+an `Idempotency-Key` header.
+
+## Public / learner
+
+| Method | Route | Body / query | Response | Auth | Slice | Phase |
+| --- | --- | --- | --- | --- | --- | --- |
+| GET | `/problems` | `track, difficulty, q, sort, page, pageSize` | `PagedList<ProblemSummary>` | anonymous | `Problems/GetProblems` | 1 |
+| GET | `/problems/{slug}` | – | `ProblemDetail` (statement, starter, signature, budgets, **visible** tests) | anonymous; Pro tracks need permission | `Problems/GetProblem` | 1 |
+| GET | `/me` | – | `{ id, email, role, plan, permissions[] }` | signed in | `Users/GetMe` | 1 |
+| POST | `/webhooks/clerk` | Svix-signed Clerk event | 204 | signature | `Users/HandleClerkWebhook` | 1 |
+| POST | `/runs` | `{ problemId, code }` | 202 `{ id }`, `Location: /submissions/{id}` | anonymous for free problems (`anonymous-runs` limit) | `Submissions/CreateRun` | 2 |
+| POST | `/submissions` | `{ problemId, code }` | 202 `{ id }` | signed in (`submissions` limit, ≤ 2 in flight) | `Submissions/CreateSubmission` | 2 |
+| GET | `/submissions/{id}` | – | `SubmissionResult` | owner only | `Submissions/GetSubmission` | 2 |
+| GET | `/me/submissions` | `problemId, page` | `PagedList<SubmissionSummary>` | signed in | `Submissions/GetMySubmissions` | 2 |
+| GET | `/me/progress` | – | `Progress` | signed in | `Progress/GetProgress` | 7 |
+| GET | `/health` | – | health report (Postgres, Redis, NATS) | anonymous | – | 1 |
+
+### Shapes
+
+```text
+ProblemSummary   { id, slug, title, track, difficulty, isFree, tags[], solved? }
+ProblemDetail    { id, slug, title, track, difficulty, isFree, version, signature, statementMarkdown,
+                   starterCode, limits { timeoutSeconds, memoryMb },
+                   visibleTests[] { name, args, expected, timeBudgetMs?, allocBudgetBytes? },
+                   hiddenTestCount, planRules[]?, metrics[]? }
+SubmissionResult { id, problemId, problemVersion, kind (Run|Submit),
+                   status (Pending|Running|Graded|Failed),
+                   verdict? (Accepted|WrongAnswer|CompileError|Timeout|BudgetExceeded|InternalError),
+                   compilerOutput?, createdAt, gradedAt?,
+                   tests[] { name, hidden, passed, elapsedMicros, allocatedBytes, message?, details? } }
+```
+
+Hidden tests: only `name`, `passed`, timings and a generic message — never args or expected values.
+`ProblemDetail` never contains hidden tests or the reference solution (integration-tested).
+
+## Admin (`/admin`, requires `admin:access`)
+
+| Method | Route | Extra permission | Slice |
+| --- | --- | --- | --- |
+| GET | `/admin/stats?days=14` | `stats:read` | `GetAdminStats` |
+| GET | `/admin/problems?status=&track=&q=&page=` | – | `ListProblems` |
+| GET | `/admin/problems/{id}` (incl. hidden tests, reference) | – | `GetProblemForEdit` |
+| POST | `/admin/problems` (creates Draft) | `problems:write` | `CreateProblem` |
+| PUT | `/admin/problems/{id}` with `If-Match` | `problems:write` | `UpdateProblem` |
+| POST | `/admin/problems/{id}/validate` | `problems:write` | `ValidateProblem` |
+| POST | `/admin/problems/{id}/publish` | `problems:publish` | `PublishProblem` |
+| POST | `/admin/problems/{id}/archive` | `problems:publish` | `ArchiveProblem` |
+| DELETE | `/admin/problems/{id}` (Drafts only) | `problems:delete` | `DeleteProblem` |
+| POST/PUT/DELETE | `/admin/problems/{id}/tests[/{testId}]` | `tests:write` | `CreateTestCase`, `UpdateTestCase`, `DeleteTestCase` |
+| PUT | `/admin/problems/{id}/tests/order` | `tests:write` | `ReorderTestCases` |
+| POST / GET | `/admin/problems/import`, `/admin/problems/{id}/export` | `problems:write` | `ImportProblemYaml`, `ExportProblemYaml` |
+| GET / PUT | `/admin/users…` | `users:manage` | `ListUsers`, `ChangeUserRole`, `DisableUser` |
+| GET / POST | `/admin/submissions…` | `submissions:read-all` | `ListAllSubmissions`, `GetAnySubmission`, `RegradeSubmission` |
+| GET | `/admin/audit?entity=&actor=` | `stats:read` | `ListAuditLog` |
+
+Conflicts: stale `If-Match` → 409; publish without a passing validation → 409.
+
+## Messaging (NATS JetStream)
+
+| Stream | Subjects | Durable consumer | Consumer |
+| --- | --- | --- | --- |
+| `JOBS` | `jobs.runs.created`, `jobs.submissions.created` | `graders` | Worker(s) |
+| `RESULTS` | `results.graded` | `api-results` | API |
+
+Object store `problem-bundles`: key `{slug}/v{version}`. Records: `src/Contracts` (`GradeRequested`, `GradeCompleted`, `TestOutcome`).

@@ -1,0 +1,15 @@
+version: 2
+updates:
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "docker"
+    directories: ["/src/Web.Api", "/src/Worker"]
+    schedule:
+      interval: "weekly"
+  # Phase 1: add npm for /apps/web and /apps/marketing once they have package.json.

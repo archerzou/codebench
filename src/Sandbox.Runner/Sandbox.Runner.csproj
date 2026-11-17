@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Grader harness baked into the sandbox images (sandbox-images/*.Dockerfile).
+    Runs INSIDE the no-network sandbox: reads the problem bundle + user code from stdin,
+    compiles with Roslyn into a collectible AssemblyLoadContext, runs tests, prints a
+    nonce-delimited JSON result. Graders live in Graders/{Algorithms,Database,Refactoring}.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>CodeBench.Sandbox.Runner</AssemblyName>
+    <RootNamespace>CodeBench.Sandbox.Runner</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Contracts\Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

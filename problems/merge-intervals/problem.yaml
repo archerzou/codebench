@@ -1,0 +1,45 @@
+slug: merge-intervals
+title: Merge Booking Windows
+track: algorithms
+difficulty: medium
+grader: algorithms
+free: true
+tags: [sorting, intervals]
+signature: "public int[][] Merge(int[][] windows)"
+statement: |
+  Each window is [start, end] with start <= end. Merge all windows that overlap
+  or touch (end == next start) and return the merged windows sorted by start.
+starter: |
+  public class Solution
+  {
+      public int[][] Merge(int[][] windows) => throw new NotImplementedException();
+  }
+reference: |
+  public class Solution
+  {
+      public int[][] Merge(int[][] windows)
+      {
+          if (windows.Length == 0) return [];
+          Array.Sort(windows, (a, b) => a[0].CompareTo(b[0]));
+          var result = new List<int[]> { windows[0] };
+          foreach (var w in windows.AsSpan(1))
+          {
+              var last = result[^1];
+              if (w[0] <= last[1]) last[1] = Math.Max(last[1], w[1]);
+              else result.Add(w);
+          }
+          return result.ToArray();
+      }
+  }
+limits: { timeoutSeconds: 10, memoryMb: 256 }
+tests:
+  - { name: Overlap, args: [[[1, 3], [2, 6], [8, 10]]], expected: [[1, 6], [8, 10]], compare: unorderedNested }
+  - { name: Touching, args: [[[1, 4], [4, 5]]], expected: [[1, 5]], compare: unorderedNested }
+  - { name: Unsorted input, args: [[[5, 7], [1, 2]]], expected: [[1, 2], [5, 7]], compare: unorderedNested }
+  - { name: Empty, hidden: true, args: [[]], expected: [] }
+  - name: 50k windows
+    hidden: true
+    args: [{ $gen: randomIntervals, count: 50000, maxStart: 1000000, maxLength: 50, seed: 3 }]
+    expected: { $ref: reference }
+    compare: unorderedNested
+    timeBudgetMs: 60

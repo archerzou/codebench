@@ -1,0 +1,33 @@
+slug: top-k-words
+title: Top K Words
+track: algorithms
+difficulty: medium
+grader: algorithms
+free: false
+tags: [hashing, sorting]
+signature: "public IList<string> TopK(string[] words, int k)"
+statement: |
+  Return the k most frequent words, highest count first. Break ties
+  alphabetically (ordinal). 1 <= k <= number of distinct words.
+starter: |
+  public class Solution
+  {
+      public IList<string> TopK(string[] words, int k) => throw new NotImplementedException();
+  }
+reference: |
+  public class Solution
+  {
+      public IList<string> TopK(string[] words, int k)
+      {
+          var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+          foreach (var w in words) counts[w] = counts.GetValueOrDefault(w) + 1;
+          return counts.OrderByDescending(p => p.Value)
+                       .ThenBy(p => p.Key, StringComparer.Ordinal)
+                       .Take(k).Select(p => p.Key).ToList();
+      }
+  }
+limits: { timeoutSeconds: 10, memoryMb: 256 }
+tests:
+  - { name: Example, args: [["go", "net", "go", "sql", "net", "go"], 2], expected: ["go", "net"], compare: exact }
+  - { name: Tie break, args: [["b", "a", "b", "a", "c"], 2], expected: ["a", "b"], compare: exact }
+  - { name: k equals distinct, hidden: true, args: [["x", "y"], 2], expected: ["x", "y"], compare: exact }

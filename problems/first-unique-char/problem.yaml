@@ -1,0 +1,38 @@
+slug: first-unique-char
+title: First Unique Character
+track: algorithms
+difficulty: easy
+grader: algorithms
+free: true
+tags: [strings, hashing]
+signature: "public int FirstUniqueIndex(string s)"
+statement: |
+  Return the index of the first character in `s` that appears exactly once,
+  or -1 if there is none. `s` contains only lowercase English letters.
+starter: |
+  public class Solution
+  {
+      public int FirstUniqueIndex(string s) => throw new NotImplementedException();
+  }
+reference: |
+  public class Solution
+  {
+      public int FirstUniqueIndex(string s)
+      {
+          Span<int> counts = stackalloc int[26];
+          foreach (var c in s) counts[c - 'a']++;
+          for (var i = 0; i < s.Length; i++) if (counts[s[i] - 'a'] == 1) return i;
+          return -1;
+      }
+  }
+limits: { timeoutSeconds: 10, memoryMb: 256 }
+tests:
+  - { name: First char unique, args: ["banana"], expected: 0 }
+  - { name: Middle, args: ["aabbcdd"], expected: 4 }
+  - { name: None, args: ["aabb"], expected: -1 }
+  - { name: Single, hidden: true, args: ["z"], expected: 0 }
+  - name: Long string
+    hidden: true
+    args: [{ $gen: randomStrings, length: 100000, alphabet: "abcdefghijklmnopqrstuvwxyz", seed: 7 }]
+    expected: { $ref: reference }
+    timeBudgetMs: 20

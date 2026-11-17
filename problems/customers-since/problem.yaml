@@ -1,0 +1,49 @@
+# Seeded once the database grader lands (Phase 5).
+slug: customers-since
+title: Customers Who Ordered Recently
+track: database
+difficulty: medium
+grader: database
+free: false
+tags: [ef-core, indexes]
+signature: "public Task<List<string>> GetNames(ShopDb db, DateTime since)"
+statement: |
+  Return the distinct names of customers with at least one order placed on or
+  after `since`, sorted alphabetically. Use one query, and let Postgres use the
+  index on orders.placed_at.
+starter: |
+  public class Solution
+  {
+      public Task<List<string>> GetNames(ShopDb db, DateTime since) => throw new NotImplementedException();
+  }
+schema: |
+  CREATE TABLE customers (id int PRIMARY KEY, name text NOT NULL);
+  CREATE TABLE orders (id int PRIMARY KEY, customer_id int NOT NULL REFERENCES customers(id),
+                       placed_at timestamptz NOT NULL, total numeric(10,2) NOT NULL);
+  CREATE INDEX ix_orders_placed_at ON orders (placed_at);
+seedSql: |
+  INSERT INTO customers SELECT g, 'Customer ' || lpad(g::text, 5, '0') FROM generate_series(1, 5000) g;
+  INSERT INTO orders SELECT g, 1 + (g % 5000), timestamptz '2026-01-01' + (g || ' minutes')::interval, 10
+  FROM generate_series(1, 200000) g;
+  ANALYZE;
+model: |
+  // compiled into the harness, visible to the user as read-only context
+  public class Customer { public int Id { get; set; } public string Name { get; set; } = ""; public List<Order> Orders { get; set; } = []; }
+  public class Order { public int Id { get; set; } public int CustomerId { get; set; } public DateTime PlacedAt { get; set; } public decimal Total { get; set; } }
+reference: |
+  public class Solution
+  {
+      public Task<List<string>> GetNames(ShopDb db, DateTime since) =>
+          db.Customers
+            .Where(c => c.Orders.Any(o => o.PlacedAt >= since))
+            .Select(c => c.Name)
+            .OrderBy(n => n)
+            .ToListAsync();
+  }
+limits: { timeoutSeconds: 20, memoryMb: 512 }
+tests:
+  - { name: Last day, args: ["2026-05-18T00:00:00Z"], expected: { $ref: reference }, compare: exact }
+  - { name: Future date, args: ["2030-01-01T00:00:00Z"], expected: [] }
+planRules:
+  - { id: one-trip, type: maxRoundTrips, value: 1 }
+  - { id: uses-index, type: usesIndex, index: ix_orders_placed_at }

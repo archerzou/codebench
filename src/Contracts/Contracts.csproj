@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    NATS message contracts shared by Web.Api and Worker.
+    Must depend on the BCL only (enforced by ArchitectureTests).
+  -->
+  <PropertyGroup>
+    <AssemblyName>CodeBench.Contracts</AssemblyName>
+    <RootNamespace>CodeBench.Contracts</RootNamespace>
+  </PropertyGroup>
+
+</Project>

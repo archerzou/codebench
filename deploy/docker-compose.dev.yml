@@ -1,0 +1,19 @@
+# Dev overrides: infra in Docker, code on the host with hot reload.
+#
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.dev.yml --env-file deploy/.env up -d
+#   dotnet watch --project src/Web.Api
+#   dotnet watch --project src/Worker
+#   npm --prefix apps/web run dev          # http://localhost:5173
+#   npm --prefix apps/marketing run dev    # http://localhost:4321
+#
+# Ports bind to 127.0.0.1 only. Never publish the DinD port on all interfaces.
+services:
+  postgres:       { ports: ["127.0.0.1:5432:5432"] }
+  redis:          { ports: ["127.0.0.1:6379:6379"] }
+  nats:           { ports: ["127.0.0.1:4222:4222", "127.0.0.1:8222:8222"] }
+  sandbox-daemon: { ports: ["127.0.0.1:2375:2375"] }   # dev only: lets a host-run worker reach it
+  observability:
+    ports:
+      - "127.0.0.1:3000:3000"   # Grafana
+      - "127.0.0.1:4317:4317"   # OTLP gRPC
+      - "127.0.0.1:4318:4318"   # OTLP HTTP

@@ -1,0 +1,46 @@
+# Seeded once the refactoring grader lands (Phase 6).
+# The starter is also the behaviour reference; metrics fail it until refactored.
+slug: shipping-cost-refactor
+title: Flatten the Shipping Calculator
+track: refactoring
+difficulty: easy
+grader: refactoring
+free: true
+tags: [refactoring, complexity]
+signature: "public decimal Cost(string zone, decimal weightKg, bool express)"
+statement: |
+  Keep the behaviour identical, but bring cyclomatic complexity to 6 or less
+  and nesting depth to 2 or less.
+starter: |
+  public class Solution
+  {
+      public decimal Cost(string zone, decimal weightKg, bool express)
+      {
+          decimal cost = 0;
+          if (zone == "local")
+          {
+              if (weightKg <= 1) { cost = 5; }
+              else { if (weightKg <= 5) { cost = 8; } else { cost = 8 + (weightKg - 5) * 1.5m; } }
+          }
+          else
+          {
+              if (zone == "national")
+              {
+                  if (weightKg <= 1) { cost = 9; } else { cost = 9 + (weightKg - 1) * 2m; }
+              }
+              else { throw new ArgumentException("Unknown zone", nameof(zone)); }
+          }
+          if (express) { cost = cost * 1.5m; }
+          return cost;
+      }
+  }
+limits: { timeoutSeconds: 10, memoryMb: 256 }
+tests:
+  - { name: Local light, args: ["local", 0.5, false], expected: 5 }
+  - { name: Local medium, args: ["local", 3, false], expected: 8 }
+  - { name: Local heavy, args: ["local", 7, false], expected: 11 }
+  - { name: National express, args: ["national", 2, true], expected: 16.5 }
+  - { name: Unknown zone throws, hidden: true, args: ["mars", 1, false], expectedException: ArgumentException }
+metrics:
+  - { id: complexity, type: maxCyclomaticComplexity, value: 6 }
+  - { id: nesting, type: maxNestingDepth, value: 2 }
