@@ -1,5 +1,5 @@
 # Build from the repo root: docker build -f src/Worker/Dockerfile .
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 WORKDIR /src
 COPY Directory.Build.props Directory.Packages.props ./
 COPY src/Contracts/ src/Contracts/
