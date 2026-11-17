@@ -6,7 +6,7 @@ COPY src/Contracts/ src/Contracts/
 COPY src/Worker/ src/Worker/
 RUN dotnet publish src/Worker -c Release -o /out
 
-FROM mcr.microsoft.com/dotnet/runtime:10.0
+FROM mcr.microsoft.com/dotnet/runtime:11.0
 RUN useradd --uid 10001 --no-create-home app
 USER 10001
 COPY --from=build /out /app
