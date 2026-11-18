@@ -8,7 +8,7 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 **Legend:** `[ ]` todo · `[x]` done · `[~]` in progress · `[!]` blocked (add a note in the Blockers Log)
 **Tracks:** 🔍 = REA self-audit (build plan Appendix D) · 🎨 = original design (`docs/design/`)
 
-**Status:** Phase 0 — 3 REA setup items open (0.4.3, 0.4.5, 0.4.6); then Phase 1
+**Status:** Phase 0 ✅ complete (2026-11-19) — next: Phase 1 (1.0 design and 1.1 Clerk can run in parallel)
 **Started:** 2026-11-17 **Last updated:** 2026-11-19
 
 ---
@@ -17,7 +17,7 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 
 | Phase | Title | Items | Done | Gate |
 |---|---|---|---|---|
-| 0 | Setup & self-audit baseline | 23 | 20 | Release build clean, tests green, infra `up`, RA-01..03 ok |
+| 0 | Setup & self-audit baseline | 23 | 23 | Release build clean, tests green, infra `up`, RA-01..03 ok |
 | 1 | Walking Skeleton | 60 | 0 | Signed in via Traefik, problem visible in own design; RA-04..07, 09 ok |
 | 2 | Algorithms Grading | 57 | 0 | Algorithms graded with time + allocations; hostile suite; RA-01/03 on publish output |
 | 3 | CI/CD | 20 | 1 | Merge → GHCR images; `update.sh` deploys + rolls back; `rea-audit` CI job |
@@ -26,7 +26,7 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 | 5 | Database Grader | 13 | 0 | EF Core problem graded on plan rules, SQL shown |
 | 6 | More Graders | 11 | 0 | One problem per grader live |
 | 7 | Product Polish | 10 | 0 | Progress, paths, plans, sandbox payment |
-| | **Total** | **239** | **21** | |
+| | **Total** | **239** | **24** | |
 
 ---
 
@@ -53,10 +53,10 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 ### 0.4 🔍 REA self-audit setup
 - [x] **0.4.1** No third-party recon — Katabench Terms reviewed, ADR 0006, `docs/recon.md`; `feature-map.md` + `api-contract.md` from own design
 - [x] **0.4.2** REA CLI 6.7.0 installed; `rea doctor`: node + host ok (native engines not needed); `inspect-managed-artifact` proven on `CodeBench.Worker.dll`
-- [ ] **0.4.3** REA registered with Claude Code (`npx rea-agents@latest setup`), restarted, tools visible
+- [x] **0.4.3** REA registered with Claude Code (`npx rea-agents@latest setup`), restarted, tools visible
 - [x] **0.4.4** Evidence in `artifacts/rea/` (git-ignored); convention `--format json --filter-output …` (no token windows)
-- [ ] **0.4.5** `scripts/rea-audit.ps1` — `ok`/`FAIL`/`skip`/`base`, non-zero exit; RA-01 (refs + `deps.json`), RA-02, RA-03 implemented, RA-04..09 `skip`
-- [ ] **0.4.6** First green run copied to `artifacts/rea/baseline/`
+- [x] **0.4.5** `scripts/rea-audit.ps1` (`-Build`, `-Ci`, `-UpdateBaseline`) — RA-01 (refs + `deps.json`), RA-02, RA-03 live, RA-04..07/09 `skip`, RA-08 reference drift (info). Negative-tested: planting `Npgsql.EntityFrameworkCore.PostgreSQL` in the Worker → RA-01 FAIL via `deps.json` (DLL refs alone stayed clean)
+- [x] **0.4.6** Baseline in `artifacts/rea/baseline/` + `manifest.json` (commit a95e6be, rea 6.7.0); re-run reports all refs unchanged
 
 ### 0.5 Accounts & keys
 - [x] **0.5.1** Clerk dev instance: issuer, publishable key (`CLERK_PUBLISHABLE_KEY`), secret key in `deploy/.env`; dev issuer in `appsettings.Development.json` — webhook secret in 1.4.3
@@ -80,8 +80,10 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 > - [x] `dotnet test` — 23/23 (Architecture 4, Unit 12, Integration 7)
 > - [x] `check-rules.ps1` — all checked rules pass (2 KD-01 baselines; SB-01/FE skipped as expected)
 > - [x] Infra up: traefik (v3.6), postgres :15432 (healthy), redis :16379 (PONG), nats (JetStream), observability (healthy)
-> - [ ] `rea-audit.ps1` RA-01..03 ok — pending 0.4.5
-> - [ ] REA tools visible in Claude Code — pending 0.4.3
+> - [x] `rea-audit.ps1` RA-01..03 ok (2026-11-19)
+> - [x] REA tools visible in Claude Code
+>
+> ✅ **Gate 0 passed 2026-11-19.**
 
 ---
 
@@ -519,6 +521,8 @@ Record every deviation from `build_plan.md` / the guide and why — future-you w
 | 2026-11-19 | Build plan rev. 2: REA self-audit track (RA-01..09, `scripts/rea-audit.ps1`) in every phase | Turns boundary/secret/hidden-data rules into evidence on the shipped artefacts, not just source checks |
 | 2026-11-19 | Original design track (`docs/design/`, §1.0); third-party screenshots git-ignored and not used (ADR 0006 addendum) | Same ToS issue as recon; avoids reproducing another product's look; repo is public |
 | 2026-11-19 | Phase 0 renamed "Setup & self-audit baseline"; recon items replaced by REA setup items | Recon dropped; REA's value is on our own builds |
+| 2026-11-19 | `rea-audit.ps1`: missing artefact = `skip` locally, `FAIL` with `-Ci`; RA-08 is informational | Script runs in every phase without false failures, but CI can't silently skip a boundary check |
+| 2026-11-19 | REA baseline lives in git-ignored `artifacts/rea/baseline/` locally; CI uses the last `main` run's artifact | Evidence contains absolute local paths; not worth committing |
 
 ---
 

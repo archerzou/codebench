@@ -102,7 +102,9 @@ tests/{Web.Api.UnitTests,IntegrationTests,ArchitectureTests,hostile-submissions}
 `src/Contracts` holds `Subjects`, `GradeRequested` (incl. `ProblemVersion`), `TestOutcome`,
 `GradeCompleted`, `Verdicts`. `BoundaryTests` enforce AR-02/AR-03 from day one.
 
-### 0.4 REA self-audit setup  ·  guide 01 "Using REA on your own builds", ADR 0006
+### 0.4 REA self-audit setup  ·  guide 01 "Using REA on your own builds", ADR 0006  ✅ done
+
+`powershell -File scripts/rea-audit.ps1 [-Build] [-Ci] [-UpdateBaseline]` — RA-01..03 live, baseline saved.
 
 No third-party recon (ADR 0006): the Terms review is recorded in `docs/recon.md`; `docs/feature-map.md`
 and `docs/api-contract.md` are our own design. REA is used **only on CodeBench's artefacts**.

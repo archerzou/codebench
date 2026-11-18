@@ -879,7 +879,8 @@ baseline entry must have a KD-xx row below, and is deleted when its exit conditi
 
 | Rule | Test |
 |---|---|
-| AR-02, AR-03 | `tests/ArchitectureTests/Layers/BoundaryTests.cs` |
+| AR-02, AR-03 | `tests/ArchitectureTests/Layers/BoundaryTests.cs` + `scripts/rea-audit.ps1` RA-01/RA-02 (built DLL + `deps.json`) |
+| AR-04 | `scripts/rea-audit.ps1` RA-03 |
 | VS-02 (handlers/endpoints sealed) | `tests/ArchitectureTests/Layers/LayerTests.cs` |
 | QY-04, EP-04 (admin), EP-07, DM-07, TS-03 | integration tests (added per phase) |
 | SB-01..SB-06 | `tests/hostile-submissions/` via `scripts/test-sandbox.sh` (Phase 2) |
@@ -889,7 +890,8 @@ baseline entry must have a KD-xx row below, and is deleted when its exit conditi
 ```powershell
 dotnet build CodeBench.slnx -c Release                    # zero warnings
 dotnet test CodeBench.slnx                                # all green (Docker running)
-powershell -File scripts/check-rules.ps1                  # rulebook
+powershell -File scripts/check-rules.ps1                  # rulebook (source)
+powershell -File scripts/rea-audit.ps1                    # rulebook (shipped artefacts, REA) — RA-01..09, build plan Appendix D
 dotnet list package --vulnerable --include-transitive     # audit debt
 npm --prefix apps/web run lint; npm --prefix apps/web test -- --run   # once the app exists
 ```
