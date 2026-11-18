@@ -1,14 +1,15 @@
 # CodeBench — Progress Tracker
 
-Companion to `context/build_plan.md` (items are grouped under the same step numbers) and
+Companion to `context/build_plan.md` (rev. 2 — items are grouped under the same step numbers) and
 `docs/guide/07-roadmap.md` (same phases, plus Phase 3A from guide 09). Tick each box as you complete it.
 Every phase ends with a **Gate** — commands that must pass before you move on. Run
-`powershell -File scripts/check-rules.ps1` at every gate (`context/code_rules.md`).
+`powershell -File scripts/check-rules.ps1` **and** `powershell -File scripts/rea-audit.ps1` at every gate.
 
 **Legend:** `[ ]` todo · `[x]` done · `[~]` in progress · `[!]` blocked (add a note in the Blockers Log)
+**Tracks:** 🔍 = REA self-audit (build plan Appendix D) · 🎨 = original design (`docs/design/`)
 
-**Status:** Phase 0 — in progress
-**Started:** 2026-11-17 **Last updated:** 2026-11-18
+**Status:** Phase 0 — 3 REA setup items open (0.4.3, 0.4.5, 0.4.6); then Phase 1
+**Started:** 2026-11-17 **Last updated:** 2026-11-19
 
 ---
 
@@ -16,27 +17,27 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 
 | Phase | Title | Items | Done | Gate |
 |---|---|---|---|---|
-| 0 | Recon & Setup | 21 | 11 | Release build clean, tests green, infra `up`, recon written |
-| 1 | Walking Skeleton | 49 | 0 | Signed in via Traefik URLs, problem + starter code visible |
-| 2 | Algorithms Grading | 52 | 0 | Algorithm problems graded with time + allocations; hostile suite passes |
-| 3 | CI/CD | 17 | 0 | Merge → GHCR images; `update.sh` deploys and rolls back |
-| 3A | Admin Console | 25 | 0 | Create → validate → publish → learner solves, no rebuild |
-| 4 | Observability & Hardening | 17 | 0 | One trace API → NATS → worker; backup restored |
-| 5 | Database Grader | 12 | 0 | EF Core problem graded on plan rules, SQL shown |
-| 6 | More Graders | 10 | 0 | One problem per grader live |
-| 7 | Product Polish | 9 | 0 | Progress, paths, plans, sandbox payment |
-| | **Total** | **212** | **11** | |
+| 0 | Setup & self-audit baseline | 23 | 20 | Release build clean, tests green, infra `up`, RA-01..03 ok |
+| 1 | Walking Skeleton | 60 | 0 | Signed in via Traefik, problem visible in own design; RA-04..07, 09 ok |
+| 2 | Algorithms Grading | 57 | 0 | Algorithms graded with time + allocations; hostile suite; RA-01/03 on publish output |
+| 3 | CI/CD | 20 | 1 | Merge → GHCR images; `update.sh` deploys + rolls back; `rea-audit` CI job |
+| 3A | Admin Console | 28 | 0 | Create → validate → publish → learner solves; admin code lazy-only |
+| 4 | Observability & Hardening | 17 | 0 | One trace API → NATS → worker; backup restored; release audit gate |
+| 5 | Database Grader | 13 | 0 | EF Core problem graded on plan rules, SQL shown |
+| 6 | More Graders | 11 | 0 | One problem per grader live |
+| 7 | Product Polish | 10 | 0 | Progress, paths, plans, sandbox payment |
+| | **Total** | **239** | **21** | |
 
 ---
 
-## Phase 0 — Recon & Setup  ·  plan §0 · guide 01, 07 §0, 08
+## Phase 0 — Setup & self-audit baseline  ·  plan §0 · guide 01 ("own builds"), 07 §0, 08
 
 ### 0.1 Toolchain
 - [x] **0.1.1** .NET SDK 10.x — `dotnet --list-sdks`
-- [x] **0.1.2** Node.js 24 LTS + npm
+- [x] **0.1.2** Node.js 24 LTS + npm (24.18.0; REA recommends 24.22.1+ — upgrade when convenient)
 - [x] **0.1.3** Docker Desktop installed (WSL2 backend, ≥ 8 GB RAM)
-- [ ] **0.1.4** Docker Desktop **running** — `docker info` exits 0 *(was not running on 2026-11-17)*
-- [x] **0.1.5** `dotnet-ef` available — `dotnet ef --version`
+- [x] **0.1.4** Docker Desktop **running** — Engine 29.1.3, 16 GB (2026-11-18)
+- [x] **0.1.5** `dotnet-ef` available — 10.0.11
 
 ### 0.2 Bootstrap the template
 - [x] **0.2.1** Solution renamed to `CodeBench.slnx`; Todos sample removed
@@ -49,34 +50,48 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 - [x] **0.3.3** `BoundaryTests` (Worker no DB, Contracts BCL-only) + `scripts/check-rules.ps1`
 - [x] **0.3.4** `CLAUDE.md` extended with CodeBench invariants; `context/` docs written
 
-### 0.4 Recon (observation only)
-- [ ] **0.4.1** Read Katabench's Terms and Acceptable Use
-- [ ] **0.4.2** REA installed — `npx rea-agents setup`, Claude Code restarted, tools visible
-- [ ] **0.4.3** Recon prompts run (marketing site, app shell, auth hand-off) → `docs/recon.md`
-- [ ] **0.4.4** `docs/feature-map.md` "Observed" column filled in your own words
-- [ ] **0.4.5** `docs/api-contract.md` reviewed against recon (own design)
+### 0.4 🔍 REA self-audit setup
+- [x] **0.4.1** No third-party recon — Katabench Terms reviewed, ADR 0006, `docs/recon.md`; `feature-map.md` + `api-contract.md` from own design
+- [x] **0.4.2** REA CLI 6.7.0 installed; `rea doctor`: node + host ok (native engines not needed); `inspect-managed-artifact` proven on `CodeBench.Worker.dll`
+- [ ] **0.4.3** REA registered with Claude Code (`npx rea-agents@latest setup`), restarted, tools visible
+- [x] **0.4.4** Evidence in `artifacts/rea/` (git-ignored); convention `--format json --filter-output …` (no token windows)
+- [ ] **0.4.5** `scripts/rea-audit.ps1` — `ok`/`FAIL`/`skip`/`base`, non-zero exit; RA-01 (refs + `deps.json`), RA-02, RA-03 implemented, RA-04..09 `skip`
+- [ ] **0.4.6** First green run copied to `artifacts/rea/baseline/`
 
 ### 0.5 Accounts & keys
-- [ ] **0.5.1** Clerk dev instance: email + GitHub sign-in; issuer, publishable key, secret key noted
-- [ ] **0.5.2** `deploy/.env` created from `.env.example`; generated passwords; `ADMIN_BOOTSTRAP_EMAIL` set
+- [x] **0.5.1** Clerk dev instance: issuer, publishable key (`CLERK_PUBLISHABLE_KEY`), secret key in `deploy/.env`; dev issuer in `appsettings.Development.json` — webhook secret in 1.4.3
+- [x] **0.5.2** `deploy/.env` from `.env.example`; hex secrets; `POSTGRES_PASSWORD=codebench`; `ADMIN_BOOTSTRAP_EMAIL` set
 
 ### 0.6 Version control
-- [ ] **0.6.1** `git init`; first commit; `git status` shows no `deploy/.env`, `bin/`, `obj/`
-- [ ] **0.6.2** GitHub repo created and pushed; secret scanning + push protection on
+- [x] **0.6.1** `git init`; first commit; `deploy/.env`, `bin/`, `obj/` not tracked
+- [x] **0.6.2** Public GitHub repo pushed; secret scanning + push protection on (verified via `gh api`)
+- [x] **0.6.3** `docs/designs/` (third-party screenshots) git-ignored — not committed, not a design reference (ADR 0006 addendum)
 
 > **🚦 GATE 0:**
 > ```powershell
 > dotnet build CodeBench.slnx -c Release      # 0 warnings
 > dotnet test CodeBench.slnx                  # all green — Docker must be running
 > powershell -File scripts/check-rules.ps1    # passes
+> powershell -File scripts/rea-audit.ps1      # RA-01..03 ok, rest skip
 > docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.dev.yml --env-file deploy/.env up -d
 > ```
-> traefik, postgres, redis, nats, observability running; `docs/recon.md` written.
-> ❌ *Common blocker:* Docker not running → every integration test fails with a timeout that looks like a code bug.
+> **Last run 2026-11-18:**
+> - [x] Release build — 0 warnings, 0 errors
+> - [x] `dotnet test` — 23/23 (Architecture 4, Unit 12, Integration 7)
+> - [x] `check-rules.ps1` — all checked rules pass (2 KD-01 baselines; SB-01/FE skipped as expected)
+> - [x] Infra up: traefik (v3.6), postgres :15432 (healthy), redis :16379 (PONG), nats (JetStream), observability (healthy)
+> - [ ] `rea-audit.ps1` RA-01..03 ok — pending 0.4.5
+> - [ ] REA tools visible in Claude Code — pending 0.4.3
 
 ---
 
 ## Phase 1 — Walking Skeleton  ·  plan §1 · guide 02 §1–3,5,8,9 · 04 · 05 · 09
+
+### 1.0 🎨 Design foundation (before 1.8; doesn't block 1.1–1.7)
+- [ ] **1.0.1** `docs/design/brief.md` — audience, 3–5 principles, voice & tone, name/wordmark direction (original)
+- [ ] **1.0.2** `docs/design/tokens.css` — Tailwind v4 `@theme`: colour roles light + dark (AA ratios recorded), type, spacing, radius
+- [ ] **1.0.3** `docs/design/pages.md` + low-fi wireframes for catalog and editor
+- [ ] **1.0.4** `docs/design/components.md` — Button, Badge, DifficultyBadge, VerdictBadge (icon + text), BudgetBar, Tabs, DataTable, EmptyState, Spinner, CodePane
 
 ### 1.1 Clerk replaces template JWT (closes KD-01)
 - [ ] **1.1.1** Register/Login/Refresh slices, `RefreshToken`, `TokenProvider`, password hashing, `Jwt` config, `JWT_SECRET` deleted
@@ -117,30 +132,32 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 - [ ] **1.6.4** `ProblemCacheKeys`; seeding invalidates `problems:*`
 
 ### 1.7 Infrastructure wiring
-- [ ] **1.7.1** Redis as HybridCache L2
+- [ ] **1.7.1** Redis as HybridCache L2 (dev: `localhost:16379` + password via user-secrets)
 - [ ] **1.7.2** Health checks: Postgres + Redis + NATS at `/health`
 - [ ] **1.7.3** CORS origins verified (app, marketing, localhost dev ports)
 - [ ] **1.7.4** `--migrate` flag for Production
 
 ### 1.8 React app
-- [ ] **1.8.1** Vite React-TS scaffolded in `apps/web`; strict tsconfig; ESLint (ts strict, react-hooks, jsx-a11y)
+- [ ] **1.8.1** Vite React-TS in `apps/web`; strict tsconfig; ESLint (ts strict, react-hooks, jsx-a11y); `build.sourcemap: false`
 - [ ] **1.8.2** `config.ts` (runtime `window.__CONFIG__` + `VITE_*` fallback) and `index.html` loads `/config.js`
 - [ ] **1.8.3** `lib/api.ts` — `useApi` (token per request), `ApiError` from ProblemDetails
-- [ ] **1.8.4** `main.tsx` providers; routes `/`, `/problems/:slug`, `/sign-in/*`, `/sign-up/*`, `/me`
-- [ ] **1.8.5** Catalog page (TanStack Query, filters)
-- [ ] **1.8.6** Editor page — statement pane + Monaco (`csharp`) + starter code + `localStorage` drafts
-- [ ] **1.8.7** Dockerfile, `nginx.conf`, `docker/40-config.sh` (publishable key only)
+- [ ] **1.8.4** 🎨 `tokens.css` wired into Tailwind; shared components from `components.md`; Monaco theme from tokens; light/dark
+- [ ] **1.8.5** `main.tsx` providers; routes `/`, `/problems/:slug`, `/sign-in/*`, `/sign-up/*`, `/me`
+- [ ] **1.8.6** Catalog page per wireframe (TanStack Query, filters)
+- [ ] **1.8.7** Editor page per wireframe — statement pane + Monaco (`csharp`) + starter code + `localStorage` drafts
+- [ ] **1.8.8** Dockerfile, `nginx.conf`, `docker/40-config.sh` (publishable key only)
 
 ### 1.9 Astro site
 - [ ] **1.9.1** Astro minimal + tailwind + sitemap + mdx, `output: 'static'`
-- [ ] **1.9.2** Catalog generated from `problems/*/problem.yaml` (summaries only)
-- [ ] **1.9.3** Pages: home, problems, problem detail, how-it-works, pricing, blog + RSS, legal
-- [ ] **1.9.4** Deep links with `?entry=`; Dockerfile + nginx
+- [ ] **1.9.2** 🎨 Same `tokens.css`; pages per `pages.md`; all copy original
+- [ ] **1.9.3** Catalog generated from `problems/*/problem.yaml` (summaries only)
+- [ ] **1.9.4** Pages: home, problems, problem detail, how-it-works, pricing, blog + RSS, legal
+- [ ] **1.9.5** Deep links with `?entry=`; Dockerfile + nginx
 
 ### 1.10 Compose & CI
 - [ ] **1.10.1** `--profile app` builds and serves api, web, marketing through Traefik
 - [ ] **1.10.2** CI frontend job enabled; Dependabot npm entries added
-- [ ] **1.10.3** Hosts-file entries if CLI tools don't resolve `*.localhost`
+- [ ] **1.10.3** Hosts-file entries for `*.codebench.localhost` (PowerShell 5.1 doesn't resolve them)
 
 ### 1.11 Tests
 - [ ] **1.11.1** Unit: handler + validator tests for every new slice
@@ -148,6 +165,13 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 - [ ] **1.11.3** Integration: `GET /problems/{slug}` JSON has no hidden tests / reference
 - [ ] **1.11.4** Integration: anonymous catalog 200; `GET /me` 401 anonymous, 200 signed in
 - [ ] **1.11.5** Frontend: Vitest + MSW test for the catalog
+
+### 1.12 🔍 REA audits
+- [ ] **1.12.1** RA-04 — `Web.Api.dll` + `CodeBench.Worker.dll` ldstr literals: no secret-shaped values
+- [ ] **1.12.2** RA-05 — `apps/web/dist`: no source maps, no secret literals, `pk_` only via `config.js`, routes = `routes.tsx`
+- [ ] **1.12.3** RA-06 — `apps/marketing/dist`: no hidden-test values or reference solutions
+- [ ] **1.12.4** RA-07 — own-app browser scenario (catalog → problem): no hidden data in any response
+- [ ] **1.12.5** RA-09 — visual baselines for home, catalog, editor in `artifacts/rea/visual/`
 
 > **🚦 GATE 1:**
 > ```powershell
@@ -157,12 +181,13 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 > ```
 > - [ ] http://codebench.localhost shows the site; "Start free" opens the app
 > - [ ] http://app.codebench.localhost — Clerk sign-in works and redirects back
-> - [ ] A problem shows statement + starter code
+> - [ ] A problem shows statement + starter code in the CodeBench design (light + dark)
 > - [ ] http://api.codebench.localhost/health healthy
 > - [ ] `dotnet test` green; `check-rules.ps1` passes with **no KD-01 baseline**
+> - [ ] `rea-audit.ps1` — RA-01..07 and RA-09 ok
 >
-> ✅ *Self-check:* open the network tab on the editor page — is there any hidden test data or reference
-> solution in any response? There must not be.
+> ✅ *Self-check:* RA-07 answers "is there hidden test data in any response on the editor page?" with
+> evidence — read its JSON, don't just trust the exit code.
 
 ---
 
@@ -232,24 +257,31 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 - [ ] **2.10.3** All verdicts match
 
 ### 2.11 UI
-- [ ] **2.11.1** `useSubmitCode` with fresh `Idempotency-Key`; buttons disabled while pending
-- [ ] **2.11.2** `useSubmissionResult` polls 750 ms until Graded/Failed
-- [ ] **2.11.3** Results panel: name, pass/fail, µs, bytes, budget bars, `aria-live`
-- [ ] **2.11.4** Compiler errors as Monaco markers
-- [ ] **2.11.5** Signed-out Submit → sign-in → resubmit from `sessionStorage`
+- [ ] **2.11.1** 🎨 Results-panel wireframe in `docs/design/wireframes/`
+- [ ] **2.11.2** `useSubmitCode` with fresh `Idempotency-Key`; buttons disabled while pending; Ctrl/Cmd+Enter
+- [ ] **2.11.3** `useSubmissionResult` polls 750 ms until Graded/Failed
+- [ ] **2.11.4** Results panel: `VerdictBadge`, name, pass/fail, µs, bytes, `BudgetBar`, `aria-live`
+- [ ] **2.11.5** Compiler errors as Monaco markers
+- [ ] **2.11.6** Signed-out Submit → sign-in → resubmit from `sessionStorage`
 
 ### 2.12 Tests
 - [ ] **2.12.1** Testcontainers NATS (`nats:2 -js`) added to the integration factory
 - [ ] **2.12.2** `POST /submissions` writes submission + outbox row; publisher emits on `jobs.submissions.created`
 - [ ] **2.12.3** Fake `GradeCompleted` grades the submission and updates progress (twice = idempotent)
-- [ ] **2.12.4** Third in-flight → 400 `Submissions.TooManyInFlight`; foreign submission → 404; anonymous Run on non-free → rejected
+- [ ] **2.12.4** Third in-flight → 400 `Submissions.TooManyInFlight`; foreign submission → 404; anonymous Run on non-free → 401
+
+### 2.13 🔍 REA audits
+- [ ] **2.13.1** RA-01 full — `dotnet publish` Worker: no Npgsql/EF/Web.Api in refs or `deps.json`; config keys only `ConnectionStrings:Nats`, `Sandbox:*`, `OTEL_*`, `DOCKER_HOST`
+- [ ] **2.13.2** RA-03 full — Runner DLL copied out of the algorithms image: refs ⊆ `System.*`, Contracts, `Microsoft.CodeAnalysis*`
+- [ ] **2.13.3** RA-07 ext. — own-app Run scenario: hidden results expose name/passed/timings/generic message only
+- [ ] **2.13.4** *(optional)* RA-10 — `rea capture-process` of the hostile suite under WSL2/CI Linux matches `expected.json`
 
 > **🚦 GATE 2:** `--profile app --profile grading` up, image loaded:
 > - [ ] Reference solution of `sum-of-evens` → Accepted with per-test µs and bytes
 > - [ ] LINQ solution fails the 1 KB allocation budget; `while(true)` → Timeout
 > - [ ] Hostile suite passes
 > - [ ] `docker compose … exec sandbox-daemon docker ps -a` — no leftover containers
-> - [ ] `dotnet test` green; `check-rules.ps1` passes (SB-01 now active, not `skip`)
+> - [ ] `dotnet test` green; `check-rules.ps1` (SB-01 active) and `rea-audit.ps1` pass
 >
 > ✅ *Self-check:* kill the worker mid-run, restart it — does the submission still complete (redelivery),
 > and does the janitor clean the orphaned container?
@@ -279,7 +311,7 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 ### 3.5 Repository settings
 - [ ] **3.5.1** `main` protected: required checks + PR review
 - [ ] **3.5.2** Dependabot for nuget, npm, docker, github-actions
-- [ ] **3.5.3** Secret scanning + push protection on
+- [x] **3.5.3** Secret scanning + push protection on (verified 2026-11-18)
 - [ ] **3.5.4** Third-party actions pinned to versions (or SHAs)
 
 ### 3.6 Deploy & rollback
@@ -287,9 +319,13 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 - [ ] **3.6.2** GHCR login with `read:packages` PAT on your machine
 - [ ] **3.6.3** Rollback with `update.sh <previous-sha>` tested once
 
-> **🚦 GATE 3:** PR → CI green; merge → four images in GHCR tagged by SHA; `update.sh` deploys;
-> rollback to the previous SHA works.
+### 3.7 🔍 `rea-audit` CI job
+- [ ] **3.7.1** Job after publish/build (ubuntu, Node 24, pinned `rea-agents`) runs `rea-audit.ps1 -Ci`; uploads `artifacts/rea/`; fails on `FAIL`
+- [ ] **3.7.2** RA-08 drift vs last `main` artifact (`compare-managed-members`, `compare-application-versions`) in the step summary
+- [ ] **3.7.3** RA-09 visual diff on PRs touching `apps/**`, images attached
 
+> **🚦 GATE 3:** PR → CI green incl. `rea-audit` artifact; merge → four images in GHCR tagged by SHA;
+> `update.sh` deploys; rollback to the previous SHA works.
 ---
 
 ## Phase 3A — Admin Console  ·  plan §3A · guide 09
@@ -324,11 +360,12 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 - [ ] **3A.7.1** `DemoDataSeeder` — ana, ben, chen with realistic activity; refuses outside Development
 
 ### 3A.8 Admin UI
-- [ ] **3A.8.1** Lazy `/admin` behind `RequirePermission`; Admin link from `/me`
-- [ ] **3A.8.2** Dashboard (stat cards, submissions/day, verdict mix, hardest problems)
-- [ ] **3A.8.3** Problems table (search, filters, status, version, actions, import)
-- [ ] **3A.8.4** Problem editor tabs: Details · Statement · Code · Tests grid · Rules · Preview; Save · Validate · Publish
-- [ ] **3A.8.5** Users, Submissions, Audit log pages
+- [ ] **3A.8.1** 🎨 Wireframes: dashboard, problems table, problem editor (`docs/design/wireframes/admin-*`)
+- [ ] **3A.8.2** Lazy `/admin` behind `RequirePermission`; Admin link from `/me`
+- [ ] **3A.8.3** Dashboard (stat cards, submissions/day, verdict mix, hardest problems)
+- [ ] **3A.8.4** Problems table (search, filters, status, version, actions, import)
+- [ ] **3A.8.5** Problem editor tabs: Details · Statement · Code · Tests grid · Rules · Preview; Save · Validate · Publish
+- [ ] **3A.8.6** Users, Submissions, Audit log pages
 
 ### 3A.9 Tests  ·  guide 09 "Tests for the admin side"
 - [ ] **3A.9.1** Learner 403 on every `/admin/*`; author edits but can't publish; admin publishes
@@ -337,8 +374,12 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 - [ ] **3A.9.4** Publishing writes `{slug}/v{n}` to the object store (Testcontainers NATS)
 - [ ] **3A.9.5** E2E: admin creates → adds test → validates → publishes; learner solves
 
-> **🚦 GATE 3A:** all 3A.9 tests green; a new problem goes live without rebuilding any image; an in-flight
-> submission still grades against the version it was submitted for.
+### 3A.10 🔍 REA audits
+- [ ] **3A.10.1** RA-05 ext. — admin code only in lazy chunks; learner entry chunk has no `/admin` routes
+- [ ] **3A.10.2** RA-07 ext. — learner scenario never requests `/admin/*`; hidden data only on admin routes
+
+> **🚦 GATE 3A:** all 3A.9 tests green; 3A.10 ok; a new problem goes live without rebuilding any image; an
+> in-flight submission still grades against the version it was submitted for.
 
 ---
 
@@ -357,22 +398,22 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 ### 4.3 Sandbox hardening checklist (guide 03)
 - [ ] **4.3.1** All container flags verified (SB-01); timeout enforced by worker + `finally` remove (SB-03)
 - [ ] **4.3.2** Output cap + nonce + schema validation (SB-04)
-- [ ] **4.3.3** Worker image: no Postgres client libs, no connection strings
+- [ ] **4.3.3** Worker image: no Postgres client libs, no connection strings (RA-01 on the image)
 - [ ] **4.3.4** Host socket mounted nowhere but Traefik
 - [ ] **4.3.5** Per-user in-flight limit (API) + `MaxAckPending` (NATS) confirmed
 - [ ] **4.3.6** gVisor (`runsc`) tried on Linux/WSL2 native engine; timings compared
 - [ ] **4.3.7** Redis and NATS passwords enforced
 
-### 4.4 REA audits
-- [ ] **4.4.1** Web bundle audit: no secrets, no source maps, no unprotected routes
-- [ ] **4.4.2** Worker assembly audit: no Npgsql/EF, config keys listed — both in CI as artifacts
+### 4.4 🔍 Release audit gate
+- [ ] **4.4.1** `rea-audit.ps1 -FromImages <sha>` runs every RA on files extracted from the GHCR images; failure blocks `update.sh` for that SHA
+- [ ] **4.4.2** RA-08 diff between previous and new release SHA recorded in the release notes
 
 ### 4.5 Backups
 - [ ] **4.5.1** `--profile backup` writes `./backups/*.sql.gz`
 - [ ] **4.5.2** A backup restored into a scratch database end to end
 
 > **🚦 GATE 4:** a Run produces one connected trace; dashboards populated; restored backup contains your
-> problems; hardening checklist fully ticked.
+> problems; hardening checklist fully ticked; latest release has its audit attached.
 
 ---
 
@@ -384,15 +425,16 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 - [ ] **5.2.2** `DbCommandInterceptor` captures SQL + parameters; results compared
 - [ ] **5.2.3** `EXPLAIN (FORMAT JSON)` per captured statement
 - [ ] **5.3.1** Plan rules `noSeqScan`, `usesIndex`, `maxRoundTrips`; outcomes in `Details`
-- [ ] **5.4.1** UI: expandable SQL + plan summary + rule outcomes per test
+- [ ] **5.4.1** 🎨 UI: expandable SQL + plan summary + rule outcomes per test (wireframe first)
 - [ ] **5.5.1** `customers-since` seeded; plan rule checked against the reference on seeded data
 - [ ] **5.5.2** Original problem: N+1
 - [ ] **5.5.3** Original problem: filter before fetch
 - [ ] **5.5.4** Original problem: sargable date range
 - [ ] **5.5.5** Original problems: projection, pagination
+- [ ] **5.6.1** 🔍 RA-03 allow-list for the database image (+ EF Core, Npgsql) — other images unchanged
 
 > **🚦 GATE 5:** `customers-since` reference → Accepted; in-memory filtering and N+1 both fail `one-trip`;
-> SQL and plan visible in the UI.
+> SQL and plan visible in the UI; RA-03 ok for both images.
 
 ---
 
@@ -407,7 +449,8 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 - [ ] **6.4.1** Test writing: user tests vs correct implementation + planted mutants
 - [ ] **6.4.2** One original test-writing problem
 - [ ] **6.5.1** Hostile-suite cases added for each new image/grader
-- [ ] **6.5.2** UI renders each grader's `Details`
+- [ ] **6.5.2** 🎨 UI renders each grader's `Details` (shared components)
+- [ ] **6.5.3** 🔍 RA-03 allow-list entry per new grader image
 
 > **🚦 GATE 6:** one problem per grader: reference → Accepted, known-bad → rejected for the right reason.
 
@@ -416,13 +459,14 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 ## Phase 7 — Product Polish  ·  plan §7 · guide 07 §7
 
 - [ ] **7.1.1** `Progress/GetProgress` — solved, attempts, streaks, XP; cached `progress:{userId}`
-- [ ] **7.1.2** Catalog checkmarks + progress page
+- [ ] **7.1.2** 🎨 Catalog checkmarks + progress page (designed in `docs/design/` first)
 - [ ] **7.2.1** Learning paths: ordered lists with prerequisites (entity + admin CRUD)
 - [ ] **7.2.2** Learner view of paths
 - [ ] **7.3.1** Free vs Pro tracks mapped to permissions; `GetProblem` enforces
 - [ ] **7.4.1** Payment provider chosen (Paddle **or** Stripe) — ADR written
 - [ ] **7.4.2** Sandbox checkout from the web app (public token only)
 - [ ] **7.4.3** Signed payment webhook slice changes `User.Plan`
+- [ ] **7.4.4** 🔍 RA-05 ext. — only the public payment token in the bundle
 - [ ] **7.5.1** Optional: Cloudflare Tunnel + Clerk production instance on own domain
 
 > **🚦 GATE 7:** a sandbox payment flips a user to Pro and unlocks a Pro track; progress and streaks render.
@@ -431,12 +475,14 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 
 ## Standing checks (every phase)  ·  guide 08 "Handling rules"
 
-- [ ] `.gitignore` covers `deploy/.env`, `**/.env.local`, `apps/marketing/.env`, `backups/`, `captures/`
-- [ ] Only `.env.example` files committed, secrets empty
-- [ ] Publishable keys only in the browser; verified by the REA bundle audit before releases
-- [ ] Worker receives no database, Clerk or payment secrets
+- [x] `.gitignore` covers `deploy/.env`, `**/.env.local`, `apps/marketing/.env`, `backups/`, `captures/`, `artifacts/`, `docs/designs/`
+- [x] Only `.env.example` files committed, secrets empty
+- [ ] Publishable keys only in the browser — verified by RA-05 before releases
+- [ ] Worker receives no database, Clerk or payment secrets — verified by RA-01
 - [ ] Test-mode keys only; live keys never leave the production machine
 - [ ] A leaked key is rotated immediately and replaced everywhere
+- [ ] No third-party product content (screenshots, copy, assets) in the repo or used as a reference (ADR 0006)
+- [ ] REA is pointed only at CodeBench artefacts or `*.codebench.localhost`
 
 ---
 
@@ -444,7 +490,11 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 
 | Date | Phase | Problem | Resolution |
 |---|---|---|---|
-| 2026-11-17 | 0 | Docker Desktop not running → integration tests not run | Start Docker Desktop, re-run `dotnet test` |
+| 2026-11-17 | 0 | Docker Desktop not running → integration tests not run | ✅ 2026-11-18 Docker running, `dotnet test` green |
+| 2026-11-18 | 0 | `compose up`: redis can't bind 127.0.0.1:6379 (Windows WinNAT excluded range 6373–6472); host 5432 already used by a native Postgres | ✅ Dev override maps 15432 / 16379; `appsettings.Development.json` + guide 05/08 updated |
+| 2026-11-18 | 0 | Traefik v3.3 docker provider fails (`Error response from daemon: ""`) — requests API 1.24, Docker Engine 29 requires ≥ 1.44 | ✅ `traefik:v3.6` in compose + guide 05 |
+| 2026-11-18 | 0 | PowerShell 5.1 can't resolve `*.codebench.localhost` | Use `curl.exe -H "Host: …" http://127.0.0.1` or hosts-file entries (1.10.3) |
+| 2026-11-19 | 0 | REA rejects `--token-limit` with structured output; only lists direct assembly refs | Use `--format json --filter-output`; RA-01 also scans `deps.json` |
 
 ## Decisions Log
 
@@ -461,6 +511,14 @@ Record every deviation from `build_plan.md` / the guide and why — future-you w
 | 2026-11-18 | YAML lives in `problems/` (not `seed/problems/`); seed data only | User preference; DB owns content after seeding |
 | 2026-11-18 | `IDateTimeProvider` (template) instead of guide's `TimeProvider` (KD-02) | One time abstraction across the codebase |
 | 2026-11-18 | Webhook logic in a handler, not the endpoint (EP-03) | Guide 02 snippet is illustrative; keeps endpoints thin |
+| 2026-11-18 | Dev host ports Postgres **15432**, Redis **16379** (container ports unchanged) | Avoid native Postgres on 5432 and Windows' reserved 6373–6472 range |
+| 2026-11-18 | `traefik:v3.6` instead of `v3.3` | Docker Engine 29 dropped API < 1.44 |
+| 2026-11-18 | **No Katabench recon** (ADR 0006); feature map + API contract from our own design | Their Terms forbid using the Service to build a competing product, reverse-engineering and scripted API scraping |
+| 2026-11-18 | `deploy/.env` uses `CLERK_PUBLISHABLE_KEY`; `VITE_CLERK_PUBLISHABLE_KEY` only in `apps/web/.env.local` | Compose reads the former |
+| 2026-11-18 | Generated secrets are hex, not base64 | base64 `/`,`+`,`=` break `nats://user:pass@` and Redis connection strings |
+| 2026-11-19 | Build plan rev. 2: REA self-audit track (RA-01..09, `scripts/rea-audit.ps1`) in every phase | Turns boundary/secret/hidden-data rules into evidence on the shipped artefacts, not just source checks |
+| 2026-11-19 | Original design track (`docs/design/`, §1.0); third-party screenshots git-ignored and not used (ADR 0006 addendum) | Same ToS issue as recon; avoids reproducing another product's look; repo is public |
+| 2026-11-19 | Phase 0 renamed "Setup & self-audit baseline"; recon items replaced by REA setup items | Recon dropped; REA's value is on our own builds |
 
 ---
 
@@ -469,7 +527,8 @@ Record every deviation from `build_plan.md` / the guide and why — future-you w
 ```powershell
 dotnet build CodeBench.slnx -c Release                    # compiles, 0 warnings?
 dotnet test CodeBench.slnx                                # green? (Docker running)
-powershell -File scripts/check-rules.ps1                  # rulebook?
+powershell -File scripts/check-rules.ps1                  # source rulebook?
+powershell -File scripts/rea-audit.ps1                    # artefact rulebook (REA)?
 dotnet list package --vulnerable --include-transitive     # audit debt?
 dotnet list package --outdated                            # drift?
 docker compose -f deploy/docker-compose.yml --env-file deploy/.env ps   # stack healthy?

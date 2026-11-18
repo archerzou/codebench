@@ -3,7 +3,8 @@
 Our own design, consolidated from [guide/02-backend-api.md](guide/02-backend-api.md) and
 [guide/09-seed-data-and-admin.md](guide/09-seed-data-and-admin.md). Errors are RFC 7807 ProblemDetails
 (`CustomResults.Problem`); error codes are `"{FeaturePlural}.{Reason}"`. Writes that create work honour
-an `Idempotency-Key` header.
+an `Idempotency-Key` header. No third-party API informed this design (ADR 0006); reviewed 2026-11-18
+against build plan §1.6/§2.2, guides 02/09 and `src/Contracts` (subjects and verdicts match).
 
 ## Public / learner
 
@@ -13,9 +14,9 @@ an `Idempotency-Key` header.
 | GET | `/problems/{slug}` | – | `ProblemDetail` (statement, starter, signature, budgets, **visible** tests) | anonymous; Pro tracks need permission | `Problems/GetProblem` | 1 |
 | GET | `/me` | – | `{ id, email, role, plan, permissions[] }` | signed in | `Users/GetMe` | 1 |
 | POST | `/webhooks/clerk` | Svix-signed Clerk event | 204 | signature | `Users/HandleClerkWebhook` | 1 |
-| POST | `/runs` | `{ problemId, code }` | 202 `{ id }`, `Location: /submissions/{id}` | anonymous for free problems (`anonymous-runs` limit) | `Submissions/CreateRun` | 2 |
+| POST | `/runs` | `{ problemId, code }` | 202 `{ id }`, `Location: /submissions/{id}` | anonymous for free problems (`anonymous-runs` limit); non-free problems need sign-in (anonymous → 401) | `Submissions/CreateRun` | 2 |
 | POST | `/submissions` | `{ problemId, code }` | 202 `{ id }` | signed in (`submissions` limit, ≤ 2 in flight) | `Submissions/CreateSubmission` | 2 |
-| GET | `/submissions/{id}` | – | `SubmissionResult` | owner only | `Submissions/GetSubmission` | 2 |
+| GET | `/submissions/{id}` | – | `SubmissionResult` | owner only (foreign id → 404); anonymous runs readable by their unguessable id | `Submissions/GetSubmission` | 2 |
 | GET | `/me/submissions` | `problemId, page` | `PagedList<SubmissionSummary>` | signed in | `Submissions/GetMySubmissions` | 2 |
 | GET | `/me/progress` | – | `Progress` | signed in | `Progress/GetProgress` | 7 |
 | GET | `/health` | – | health report (Postgres, Redis, NATS) | anonymous | – | 1 |

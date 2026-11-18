@@ -7,9 +7,11 @@
 #   npm --prefix apps/marketing run dev    # http://localhost:4321
 #
 # Ports bind to 127.0.0.1 only. Never publish the DinD port on all interfaces.
+# Postgres/Redis use 15432/16379 on the host: 5432 is often taken by a native Postgres install and
+# 6379 falls inside Windows' WinNAT/Hyper-V excluded port ranges (`netsh int ipv4 show excludedportrange tcp`).
 services:
-  postgres:       { ports: ["127.0.0.1:5432:5432"] }
-  redis:          { ports: ["127.0.0.1:6379:6379"] }
+  postgres:       { ports: ["127.0.0.1:15432:5432"] }
+  redis:          { ports: ["127.0.0.1:16379:6379"] }
   nats:           { ports: ["127.0.0.1:4222:4222", "127.0.0.1:8222:8222"] }
   sandbox-daemon: { ports: ["127.0.0.1:2375:2375"] }   # dev only: lets a host-run worker reach it
   observability:

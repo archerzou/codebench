@@ -168,8 +168,8 @@ When you run the API and worker with `dotnet watch` and the frontends with `npm 
 # API: .NET user-secrets (stored outside the repo)
 cd src/Web.Api
 dotnet user-secrets init
-dotnet user-secrets set "ConnectionStrings:Database" "Host=localhost;Database=codebench;Username=codebench;Password=<pw>"
-dotnet user-secrets set "ConnectionStrings:Redis" "localhost:6379,password=<pw>"
+dotnet user-secrets set "ConnectionStrings:Database" "Host=localhost;Port=15432;Database=codebench;Username=codebench;Password=<pw>"
+dotnet user-secrets set "ConnectionStrings:Redis" "localhost:16379,password=<pw>"
 dotnet user-secrets set "ConnectionStrings:Nats" "nats://codebench:<pw>@localhost:4222"
 dotnet user-secrets set "Clerk:Issuer" "https://YOUR-INSTANCE.clerk.accounts.dev"
 dotnet user-secrets set "Clerk:WebhookSecret" "whsec_..."

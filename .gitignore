@@ -416,3 +416,6 @@ apps/*/dist/
 apps/*/.astro/
 playwright-report/
 test-results/
+
+# Third-party screenshots - never commit (public repo; ADR 0006)
+docs/designs/

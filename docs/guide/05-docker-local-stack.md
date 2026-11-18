@@ -63,7 +63,7 @@ x-otel-env: &otel-env
 
 services:
   traefik:
-    image: traefik:v3.3
+    image: traefik:v3.6          # v3.3 can't talk to Docker Engine 29+ (API 1.24 rejected)
     command:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
@@ -272,8 +272,8 @@ During day-to-day work, run infrastructure in Docker and your code with hot relo
 
 ```yaml
 services:
-  postgres: { ports: ["127.0.0.1:5432:5432"] }
-  redis:    { ports: ["127.0.0.1:6379:6379"] }
+  postgres: { ports: ["127.0.0.1:15432:5432"] }   # host 5432 often taken by a native Postgres
+  redis:    { ports: ["127.0.0.1:16379:6379"] }   # host 6379 inside Windows' WinNAT excluded range
   nats:     { ports: ["127.0.0.1:4222:4222", "127.0.0.1:8222:8222"] }
   sandbox-daemon: { ports: ["127.0.0.1:2375:2375"] }   # dev only: lets a host-run worker reach it
   otel-collector: { ports: ["127.0.0.1:4317:4317"] }

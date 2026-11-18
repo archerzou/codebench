@@ -19,7 +19,7 @@ x-otel-env: &otel-env
 
 services:
   traefik:
-    image: traefik:v3.3
+    image: traefik:v3.6   # >= v3.6: older Traefik requests Docker API 1.24, rejected by Docker Engine 29+
     command:
       - --providers.docker=true
       - --providers.docker.exposedbydefault=false
