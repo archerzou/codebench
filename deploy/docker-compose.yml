@@ -85,11 +85,6 @@ services:
       Admin__BootstrapEmails__0: ${ADMIN_BOOTSTRAP_EMAIL}
       Admin__ApiKey: ${ADMIN_API_KEY}
       Payments__Provider: ${PAYMENTS_PROVIDER:-none}
-      # Template JWT issuing — removed in Phase 1 when Clerk validation replaces it.
-      Jwt__Secret: ${JWT_SECRET}
-      Jwt__Issuer: codebench
-      Jwt__Audience: codebench-app
-      Jwt__ExpirationInMinutes: "60"
     volumes:
       - ../problems:/problems:ro  # seed data: `docker compose run --rm api --seed`
     depends_on:

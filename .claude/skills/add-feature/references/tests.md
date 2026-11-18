@@ -87,7 +87,7 @@ Conventions:
 
 ## Validator tests
 
-`tests/Web.Api.UnitTests/{Feature}/{Feature}ValidatorsTests.cs` (extend the existing file if present). One class covers all validators of a feature; each validator is the slice's nested `Validator`.
+`tests/Web.Api.UnitTests/{Feature}/{UseCase}ValidatorTests.cs` — one class per slice validator (NM-10), mirroring the one-file-per-use-case layout; the validator is the slice's nested `Validator`.
 
 ```csharp
 using FluentValidation.TestHelper;
@@ -116,32 +116,22 @@ Cover each rule's failure plus one fully-valid command (`ShouldNotHaveAnyValidat
 
 ## Integration tests
 
-`tests/IntegrationTests/{Feature}/{Feature}Tests.cs` (extend the existing file if present). Inherit `BaseIntegrationTest(factory)` — it runs the real API against a Testcontainers Postgres and provides `HttpClient`, `RegisterAndLoginAsync()`, and `Authenticate(token)`. Tests go through real HTTP, never call handlers directly, so they don't reference the slice types — define private response DTO records inside the test class (see `TodosTests.TodoDto`).
+`tests/IntegrationTests/{Feature}/{UseCase}Tests.cs` — one class per slice (NM-10); cross-cutting pipeline tests go in a folder mirroring `src` (e.g. `Authentication/ClerkTokenValidationTests.cs`). Inherit `BaseIntegrationTest(factory)` — it runs the real API against a Testcontainers Postgres and provides `HttpClient`, `Factory`, `SignInAsNewUserAsync()` (creates a local `User` and authenticates with a Clerk-shaped test token), `CreateUserAsync()`, `Authenticate(token)` and `TestJwt.Create(sub, azp, …)` for token edge cases. There is no register/login — Clerk owns identity (ADR 0001). Tests go through real HTTP and never call handlers directly; deserialize into the slice's public `Response` record or a private DTO record.
 
 ```csharp
 [Fact]
-public async Task ArchiveTodo_Should_MarkTodoAsArchived()
+public async Task CreateSubmission_Should_Return202AndLocation_When_SignedIn()
 {
-    // Arrange
-    (Guid userId, AccessTokens tokens) = await RegisterAndLoginAsync();
-    Authenticate(tokens.AccessToken);
-
-    var createRequest = new
-    {
-        userId,
-        description = "Todo to archive",
-        labels = Array.Empty<string>(),
-        priority = 1
-    };
-    HttpResponseMessage createResponse = await HttpClient.PostAsJsonAsync("todos", createRequest);
-    createResponse.EnsureSuccessStatusCode();
-    Guid todoId = await createResponse.Content.ReadFromJsonAsync<Guid>();
+    // Arrange — identity comes from the token, never from the body (VS-07)
+    await SignInAsNewUserAsync();
+    var request = new { problemId = SeededProblemId, code = "public sealed class Solution { }" };
 
     // Act
-    HttpResponseMessage response = await HttpClient.PutAsync($"todos/{todoId}/archive", null);
+    HttpResponseMessage response = await HttpClient.PostAsJsonAsync("submissions", request);
 
     // Assert
-    response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+    response.StatusCode.ShouldBe(HttpStatusCode.Accepted);
+    response.Headers.Location.ShouldNotBeNull();
 }
 ```
 

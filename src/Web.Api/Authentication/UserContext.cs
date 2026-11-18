@@ -1,21 +1,23 @@
-﻿using Web.Api.Authentication;
-using Microsoft.AspNetCore.Http;
+﻿namespace Web.Api.Authentication;
 
-namespace Web.Api.Authentication;
-
-internal sealed class UserContext : IUserContext
+internal sealed class UserContext(IHttpContextAccessor httpContextAccessor) : IUserContext
 {
-    private readonly IHttpContextAccessor _httpContextAccessor;
+    public bool IsAuthenticated => httpContextAccessor.HttpContext?.User.Identity?.IsAuthenticated == true;
 
-    public UserContext(IHttpContextAccessor httpContextAccessor)
+    public string ExternalId =>
+        httpContextAccessor.HttpContext?.User.GetExternalId() ?? throw new UserContextUnavailableException();
+
+    public Guid UserId => TryGetUserId(out Guid userId) ? userId : throw new UserContextUnavailableException();
+
+    public bool TryGetUserId(out Guid userId)
     {
-        _httpContextAccessor = httpContextAccessor;
-    }
+        if (httpContextAccessor.HttpContext?.Items[UserResolutionMiddleware.UserIdItemKey] is Guid resolved)
+        {
+            userId = resolved;
+            return true;
+        }
 
-    public Guid UserId =>
-        _httpContextAccessor
-            .HttpContext?
-            .User
-            .GetUserId() ??
-        throw new UserContextUnavailableException();
+        userId = Guid.Empty;
+        return false;
+    }
 }

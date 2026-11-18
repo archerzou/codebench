@@ -3,6 +3,7 @@ using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Serilog;
 using Web.Api;
+using Web.Api.Authentication;
 using Web.Api.Common.Endpoints;
 using Web.Api.Common.Extensions;
 
@@ -52,6 +53,8 @@ app.UseExceptionHandler();
 app.UseCors();
 
 app.UseAuthentication();
+
+app.UseUserResolution();
 
 app.UseAuthorization();
 

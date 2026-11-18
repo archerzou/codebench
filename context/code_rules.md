@@ -3,7 +3,7 @@
 **Purpose:** an enforceable rulebook for this codebase. Feed it to Claude Code (or any review tool) to
 audit changes, and use it yourself before opening a PR.
 
-**Version:** 1.0 · **Last updated:** 2026-11-18 · **Applies to:** CodeBench (.NET 10 API + Worker +
+**Version:** 1.1 · **Last updated:** 2026-11-19 · **Applies to:** CodeBench (.NET 10 API + Worker +
 Sandbox.Runner, React 19 + Vite + TS app, Astro site)
 
 **Companions:** `context/build_plan.md` (how to build it) · `context/progress_tracker.md` (where you are) ·
@@ -637,7 +637,7 @@ Required settings (`ConnectionStrings:*`, `Clerk:Issuer`) are validated at start
 
 ### TS-02 🔴 Names and structure match existing tests
 
-`{Method}_Should_{Outcome}_When_{Condition}`, Arrange / Act / Assert, Shouldly assertions, nested types
+`{Subject}_Should_{Outcome}[_When_{Condition}]` (NM-11), Arrange / Act / Assert, Shouldly assertions, nested types
 used directly (`new CreateSubmission.Handler(...)`, `new CreateSubmission.Validator()`).
 
 ---
@@ -748,7 +748,7 @@ enforces everything. `/admin` is `lazy()`-loaded so learners never download it.
 
 ### FE-09 🟡 Component conventions
 
-Function components + hooks only; one component per file, `PascalCase.tsx`, named exports; hooks are
+Function components + hooks only; one component per file, `PascalCase.tsx`, named exports (file names: NM-13); hooks are
 `useX.ts`; props typed with a `type XProps`; no prop drilling beyond two levels (lift to a hook or context);
 no business logic in JSX — compute in hooks.
 
@@ -835,11 +835,225 @@ EF migrations, the model snapshot, and any generated API client. Change the sour
 
 ---
 
+# Part 12 — Naming Rules (NM)
+
+One name per concept, spelled the same way in the file system, the code, the API, the database, the
+queue and the UI. When a name is wrong it is cheaper to rename now than to explain forever.
+Automated: `check-rules.ps1` checks NM-01, 02, 04, 05, 07, 08, 09, 10, 11, 12; the build enforces NM-03 (`.editorconfig` naming rules, IDE1006 as error); NM-06, NM-13 (until `apps/web` exists) and NM-14 are reviewed. All checks are **case-sensitive** (`-cmatch`).
+
+### NM-01 🟠 One top-level type per C# file; file name = type name
+
+`ProblemErrors.cs` contains `ProblemErrors` and nothing else. **Exception:** generic-arity twins of the
+same name (`Result` + `Result<T>`, `ICommand` + `ICommand<T>`). `Program.cs`, `GlobalUsings.cs` and
+migrations are exempt. Slices are covered too: `GetMe.cs` → `public static class GetMe` (VS-01).
+
+**Why:** you find a type by its file name; a 4-type `Grading.cs` hides `Verdicts` from search and review.
+
+---
+
+### NM-02 🟠 Namespace = root namespace + folder path
+
+| Project folder | Root namespace | Example |
+|---|---|---|
+| `src/Web.Api` | `Web.Api` | `src/Web.Api/Features/Users/GetMe.cs` → `Web.Api.Features.Users` |
+| `src/Contracts` | `CodeBench.Contracts` | `src/Contracts/Verdicts.cs` → `CodeBench.Contracts` |
+| `src/Worker` | `CodeBench.Worker` | `src/Worker/Sandbox/SandboxRunner.cs` → `CodeBench.Worker.Sandbox` |
+| `src/Sandbox.Runner` | `CodeBench.Sandbox.Runner` | `…/Graders/Algorithms/…` → `CodeBench.Sandbox.Runner.Graders.Algorithms` |
+| `tests/Web.Api.UnitTests` | `Web.Api.UnitTests` | `…/Users/GetMeHandlerTests.cs` → `Web.Api.UnitTests.Users` |
+| `tests/IntegrationTests` | `IntegrationTests` | `…/Authentication/TestJwt.cs` → `IntegrationTests.Authentication` |
+| `tests/ArchitectureTests` | `ArchitectureTests` | `…/Layers/BoundaryTests.cs` → `ArchitectureTests.Layers` |
+
+Always file-scoped (`namespace X;`). The `Web.Api` vs `CodeBench.*` split is historical (Decisions Log
+2026-11-17: template namespace kept) — don't "fix" one side without the other.
+
+---
+
+### NM-03 🟡 C# identifier casing
+
+| Kind | Style | Examples |
+|---|---|---|
+| Types, methods, properties, events, enum members | `PascalCase` | `UserResolutionMiddleware`, `TryGetUserId`, `ProblemStatus.Published` |
+| Interfaces | `I` + `PascalCase` | `IUserContext`, `IDateTimeProvider` |
+| Constants and `static readonly` fields (any visibility) | `PascalCase` | `SectionName`, `CacheOptions`, `Placeholder` |
+| Private instance fields | `_camelCase` | `_domainEvents`, `_dbContainer` |
+| Parameters, locals | `camelCase` | `externalId`, `cancellationToken` |
+| Generic type parameters | `T` or `T` + `PascalCase` | `T`, `TResponse`, `TCommand` |
+| Booleans | `Is`/`Has`/`Can`/`Should` prefix, or `Try…` method returning `bool` | `IsDisabled`, `HasValidIssuer`, `TryGetUserId(out …)` |
+| Enums | singular type name (plural only for `[Flags]`) | `Role`, `Difficulty`, `SubmissionKind` |
+
+`CancellationToken` parameters are named `cancellationToken` (lambdas may use `ct`). Acronyms of three or
+more letters are Pascal-cased words: `Json`, `Sql`, `Http`, `Nats`, `Url` (`ProblemJson`, not `ProblemJSON`);
+two-letter ones too (`Id`, `Io`, `Ui`).
+**Check:** `.editorconfig` naming rules at `warning` + `dotnet_diagnostic.IDE1006.severity = warning` → build error. Test methods are exempt from the PascalCase rule (`[tests/**/*.cs]`) because NM-11 governs them.
+
+---
+
+### NM-04 🟠 Async methods end in `Async`
+
+Every method returning `Task`/`ValueTask` ends in `Async`; nothing else does.
+**Exceptions (exhaustive):** the CQRS/domain-event contract method `Handle` (`ICommandHandler`,
+`IQueryHandler`, `IDomainEventHandler`, decorators, dispatcher wrappers — template convention, decided
+2026-11-19); xUnit test methods (NM-11); framework overrides whose name is fixed
+(`BackgroundService.ExecuteAsync`, `IAsyncLifetime.InitializeAsync` already comply).
+
+---
+
+### NM-05 🟠 Middleware entry point is `InvokeAsync`
+
+Convention-based middleware exposes `public Task InvokeAsync(HttpContext context, …)` — never `Invoke` —
+and **awaits** `next(context)` when it holds scope (logging scopes, `using`) across the call.
+
+**Why:** a non-awaited `return next(context)` inside `using` disposes the scope at the first `await`
+downstream (found and fixed in `RequestContextLoggingMiddleware`, 2026-11-19).
+
+---
+
+### NM-06 🟡 Role suffixes say what a type is
+
+| Suffix / name | Meaning | Lives in | Examples |
+|---|---|---|---|
+| `{UseCase}` (static class) | a vertical slice | `Features/{Feature}/` | `GetMe`, `CreateSubmission`, `PublishProblem` |
+| `{Entity}` | aggregate / entity, singular | `Features/{Feature}/` | `User`, `Problem`, `TestCase` |
+| `{Entity}Errors` | error catalog | `Features/{Feature}/` | `UserErrors`, `ProblemErrors` |
+| `{Entity}{PastTenseVerb}DomainEvent` | domain event | `Features/{Feature}/` | `SubmissionGradedDomainEvent` |
+| `{Feature}CacheKeys` | cache-key helpers | `Features/{Feature}/` | `UserCacheKeys`, `ProblemCacheKeys` |
+| `Permissions` | permission constants of a feature | `Features/{Feature}/` | `Permissions.ProblemsPublish` |
+| `{Entity}Configuration` | `IEntityTypeConfiguration<T>` | `Database/Configurations/` | `UserConfiguration` |
+| `{Name}Seeder` | seeder | `Database/Seeding/` | `ProblemSeeder`, `RoleSeeder` |
+| `{Name}Options` (+ `const string SectionName`) | bound configuration | next to its consumer | `ClerkOptions`, `SandboxOptions` |
+| `{Name}Middleware` | ASP.NET middleware | `Common/Middleware/`, `Authentication/` | `UserResolutionMiddleware` |
+| `{Name}Extensions` | static extension methods | next to what they extend | `AuthenticationExtensions` |
+| `{Name}Publisher` / `{Name}Consumer` | NATS producer / consumer (hosted) | `Messaging/` (API), `src/Worker` | `OutboxPublisher`, `GradeResultConsumer` |
+| `{Name}Provider` / `{Name}Validator` | injectable source of X / pure check | `Authorization/`, `Authentication/` | `PermissionProvider`, `AuthorizedPartyValidator` |
+| `{Name}Decorator` | handler decorator | `Common/Behaviors/` | `ValidationDecorator` |
+| `{Verb}{Noun}` contract record | NATS message | `src/Contracts/` | `GradeRequested`, `GradeCompleted` (past tense = fact) |
+
+Slice names start with a verb: `Get` (read one/many), `Create`, `Update`, `Delete`, `Archive`,
+`Publish`, `Validate`, `Import`/`Export`, `Handle{Source}Webhook`. A collection read is plural
+(`GetProblems`), a single read singular (`GetProblem`). `DependencyInjection` (composition root) is the
+one historical name outside this table.
+
+---
+
+### NM-07 🟡 Error codes, permissions, cache keys, policies
+
+| Thing | Format | Examples |
+|---|---|---|
+| Error code | `"{FeaturePlural}.{Reason}"`, both `PascalCase` | `Users.NotProvisioned`, `Submissions.TooManyInFlight` |
+| Permission | `"{area}:{action}"`, lowercase, kebab-case action | `problems:publish`, `submissions:read-own`, `admin:access` |
+| Cache key | lowercase, `:`-separated, `{placeholder}` segments | `users:ext:{sub}`, `problems:list:{hash}`, `permissions:{externalId}` |
+| Rate-limit policy | kebab-case | `submissions`, `anonymous-runs` |
+| OpenAPI tag | `PascalCase` plural | `Users`, `Problems`, `Admin` |
+
+**Check:** error codes and cache keys are pattern-checked (NM-07); permissions when `Permissions.cs` grows.
+
+---
+
+### NM-08 🟡 HTTP surface
+
+Routes are lowercase, kebab-case, **plural nouns** for collections (`/problems`, `/me/submissions`,
+`/admin/problems/{id}/tests/order`, `/webhooks/clerk`); no verbs except action sub-resources on a single
+resource (`/admin/problems/{id}/publish`). Route parameters and query parameters are `camelCase`
+(`{slug}`, `{id:guid}`, `?pageSize=`), JSON bodies `camelCase` (System.Text.Json web defaults), headers
+`Title-Case` (`Idempotency-Key`, `Correlation-Id`).
+**Check:** `Map{Get,Post,Put,Delete}("…")` literals must be lowercase kebab with `{camelCase}` params.
+
+---
+
+### NM-09 🟡 Data, messaging and config names
+
+| Thing | Format | Examples |
+|---|---|---|
+| Tables / columns | snake_case, generated (don't hand-name — DM-03); tables plural | `users.external_id`, `outbox_messages.processed_at` |
+| Migrations | `Phase{N}[A]_{Words_With_Underscores}` (`Initial` grandfathered) | `Phase1_Clerk_Users`, `Phase1_Problems_Users`, `Phase3A_Audit_Log` |
+| NATS subjects | lowercase, `.`-separated, `{area}.{entity}.{event}` | `jobs.runs.created`, `results.graded` |
+| NATS streams / durable consumers / buckets | `UPPERCASE` / kebab-case / kebab-case | `JOBS`, `api-results`, `problem-bundles` |
+| Bundle keys | `{slug}/v{version}` | `sum-of-evens/v3` |
+| Problem slugs | lowercase kebab-case, ≤ 64 chars | `merge-intervals` |
+| Config keys | `PascalCase` sections (`Clerk:Issuer`), env vars `Section__Key`, `.env` vars `SCREAMING_SNAKE` | `Clerk__AuthorizedParties__0`, `CLERK_ISSUER` |
+| Log templates | `PascalCase` properties, no interpolation | `"Outbox publish failed for {MessageId}"` |
+| Telemetry / images / hosts | `codebench-{name}` / `codebench-{name}` / `{name}.codebench.localhost` | `codebench-api`, `codebench-sandbox-algorithms` |
+
+**Check:** migration names (NM-09).
+
+---
+
+### NM-10 🟠 Test files mirror what they test
+
+| Test kind | Path | Class |
+|---|---|---|
+| Handler unit test | `tests/Web.Api.UnitTests/{Feature}/{UseCase}HandlerTests.cs` | `{UseCase}HandlerTests` |
+| Validator unit test | `tests/Web.Api.UnitTests/{Feature}/{UseCase}ValidatorTests.cs` | `{UseCase}ValidatorTests` |
+| Other unit test | `tests/Web.Api.UnitTests/{SrcFolder}/{TypeName}Tests.cs` | `{TypeName}Tests` |
+| Integration (slice) | `tests/IntegrationTests/{Feature}/{UseCase}Tests.cs` | `{UseCase}Tests` |
+| Integration (cross-cutting) | `tests/IntegrationTests/{SrcFolder}/{Concern}Tests.cs` | e.g. `ClerkTokenValidationTests` |
+| Architecture | `tests/ArchitectureTests/{Area}/{Topic}Tests.cs` | `BoundaryTests` |
+| Test helpers | no `Tests` suffix | `TestJwt`, `BaseIntegrationTest` |
+
+One test class per use case, not one per feature — the same unit as the slice (VS-01).
+**Check:** every `*Tests.cs` declares a class of the same name (NM-01) and contains at least one test.
+
+---
+
+### NM-11 🟠 Test method names
+
+`{Subject}_Should_{Outcome}[_When_{Condition}]`, each part `PascalCase`, no other underscores:
+`Handle_Should_ReturnNotProvisioned_When_NoLocalUserWasResolved`, `GetMe_Should_Return401_When_Anonymous`,
+`Worker_Should_NotReferenceDatabaseOrApi`. Subject = the method under test (unit), the slice name
+(integration) or the component (architecture). Supersedes the shorter wording in TS-02.
+**Check:** every `[Fact]`/`[Theory]` method (NM-11).
+
+---
+
+### NM-12 🟡 File and folder names outside C#
+
+| Where | Style | Examples |
+|---|---|---|
+| `docs/**`, `scripts/**`, `deploy/**`, `sandbox-images/**`, `.github/**`, skills | kebab-case | `api-contract.md`, `check-rules.ps1`, `docker-compose.dev.yml` |
+| ADRs | `NNNN-kebab-title.md` | `0006-no-katabench-recon.md` |
+| Guide tabs | `NN-kebab-title.md` | `02-backend-api.md` |
+| Sandbox images | `{graderKind}.Dockerfile` | `algorithms.Dockerfile` |
+| Problems | `problems/{slug}/problem.yaml` | `problems/sum-of-evens/problem.yaml` |
+| Hostile cases | `tests/hostile-submissions/{kebab-case}/Solution.cs` + `expected.json` | `infinite-loop/` |
+| **Exception:** `context/` | snake_case (working docs referenced by name in prompts — decided 2026-11-19) | `build_plan.md`, `code_rules.md` |
+| **Exception:** well-known names | as the ecosystem expects | `README.md`, `CLAUDE.md`, `SKILL.md`, `Dockerfile`, `Directory.Packages.props`, `.env.example` |
+
+**Check:** NM-12 over `docs/`, `scripts/`, `deploy/`, `sandbox-images/`, `.github/`.
+
+---
+
+### NM-13 🟡 Frontend names (`apps/web`, `apps/marketing`)
+
+| Thing | Style | Examples |
+|---|---|---|
+| React components | `PascalCase.tsx`, named export of the same name (FE-09) | `ProblemList.tsx` → `export function ProblemList` |
+| Hooks | `useCamelCase.ts` | `useProblems.ts`, `useSubmitCode` |
+| Other modules | `camelCase.ts` | `api.ts`, `queryClient.ts`, `config.ts` |
+| Tests | `{File}.test.ts(x)` next to the file | `ProblemList.test.tsx` |
+| Feature folders | lowercase, singular-or-plural as in `features/` list (FE-02) | `features/problems`, `features/editor` |
+| zod schemas / inferred types | `camelCaseSchema` / `PascalCase` | `problemSummarySchema` → `type ProblemSummary` |
+| Props types | `{Component}Props` | `ProblemListProps` |
+| Query keys | arrays starting with the resource (FE-03) | `['problems', filters]` |
+| Astro pages / content entries | kebab-case | `how-it-works.astro`, `blog/first-post.md` |
+| CSS tokens | `--cb-{role}` vars → Tailwind `{utility}-{role}` | `--cb-ink-muted` → `text-ink-muted` |
+
+**Check:** activates with `apps/web` (FE-* section of `check-rules.ps1`).
+
+---
+
+### NM-14 🔵 Commits and branches
+
+Conventional Commits: `feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`, `ci:` + optional scope
+(`feat(problems): …`). Branches `{type}/{short-kebab}` (`feat/clerk-auth`). Not machine-checked locally;
+add commitlint in Phase 3 if it drifts.
+
+---
+
 # Automated Verification
 
 **→ Run `powershell -File scripts/check-rules.ps1`.** Exits non-zero on any violation, so it can gate CI.
 
-**Status as of 2026-11-18: all checked rules pass** (2 baselined deviations, both KD-01).
+**Status as of 2026-11-19: all checked rules pass, no baselined deviations** (KD-01 closed in Phase 1.1).
 
 ```
 ok   AR-01  No Domain/Application/Infrastructure layer projects
@@ -864,6 +1078,16 @@ skip SB-01  Sandbox containers fully hardened (no SandboxRunner yet)
 ok   SB-02  Host Docker socket never used by Worker
 ok   SC-01  No secret values in source
 skip FE-*   Frontend rules (apps/web not scaffolded yet)
+ok   NM-01  One top-level type per file, named like the file
+ok   NM-02  Namespace = root namespace + folder path (file-scoped)
+ok   NM-04  Async suffix exactly on Task-returning methods (Handle excepted)
+ok   NM-05  Middleware exposes InvokeAsync, not Invoke
+ok   NM-07  Error codes Feature.Reason; cache keys lowercase a:b:{c}
+ok   NM-08  Routes are lowercase kebab-case with {camelCase} parameters
+ok   NM-09  Migrations named Phase{N}_{Words}
+ok   NM-10  Test files mirror what they test
+ok   NM-11  Test methods named {Subject}_Should_{Outcome}[_When_{Condition}]
+ok   NM-12  kebab-case names in docs/, scripts/, deploy/, problems/, skills, CI
 ok   XC-01  Central Package Management: no Version= in csproj
 ok   XC-02  Every #pragma warning disable has a justification comment
 ok   XC-03  No sync-over-async
@@ -945,6 +1169,13 @@ npm --prefix apps/web run lint; npm --prefix apps/web test -- --run   # once the
 - [ ] TS-01/02  Right test type, existing naming
 - [ ] TS-03     Security-relevant behaviour has an integration test
 
+## Naming
+- [ ] NM-01/02  One type per file, file = type · namespace = folder path
+- [ ] NM-04/05  Async suffix (Handle excepted) · middleware InvokeAsync
+- [ ] NM-06/07  Role suffixes · error codes, permissions, cache keys
+- [ ] NM-08/09  Routes kebab + {camelCase} · migrations Phase{N}_{Words}
+- [ ] NM-10/11  Test files mirror slices · {Subject}_Should_{Outcome}[_When_{Condition}]
+
 ## Cross-cutting
 - [ ] XC-01/02  No versions in csproj · suppressions justified
 - [ ] XC-05     Deviations recorded (ADR / Decisions Log / KD)
@@ -959,7 +1190,7 @@ npm --prefix apps/web run lint; npm --prefix apps/web test -- --run   # once the
 
 | ID | Deviation | Rationale | Exit condition |
 |---|---|---|---|
-| KD-01 | Template JWT issuing still present: `Register`/`Login`/`Refresh` are anonymous without `.AllowAnonymous()` (EP-04); `TokenProvider.cs:28` uses `DateTime.UtcNow` (DM-04); compose passes `JWT_SECRET` | Removed wholesale when Clerk lands, not worth retrofitting | Phase 1.1 — delete slices, `TokenProvider`, `RefreshToken`, password hashing; drop baseline entries |
+| ~~KD-01~~ | ~~Template JWT issuing still present~~ | — | ✅ **Closed 2026-11-19** (Phase 1.1): slices, `TokenProvider`, `RefreshToken`, password hashing, `Jwt` config and `JWT_SECRET` deleted; baseline entries removed |
 | KD-02 | `IDateTimeProvider.UtcNow` returns `DateTime` (UTC), guide uses `TimeProvider`/`DateTimeOffset` | Template convention; Npgsql maps UTC `DateTime` to `timestamptz` | None — deliberate. Revisit only if offsets are ever needed |
 | KD-03 | Decorators registered with `TryDecorate` | Template's `Decorate` throws when a handler shape has no implementations (happened after removing Todos) | None — deliberate |
 | KD-04 | Observability is one `grafana/otel-lgtm` container, not the five services in guide 05 | Same signals, one container, already in the template | Phase 4.2 if separate retention/scaling is needed |
@@ -973,6 +1204,7 @@ npm --prefix apps/web run lint; npm --prefix apps/web test -- --run   # once the
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-11-18 | Initial rulebook for CodeBench: VSA template conventions + guide 00–09 boundaries + frontend standards; `scripts/check-rules.ps1` |
+| 1.1 | 2026-11-19 | Part 12 Naming (NM-01…NM-14) + 10 automated checks; `.editorconfig` naming enforced (IDE1006); XC-02 check fixed (was vacuous: `#` lines skipped, `tests/` not scanned); TS-02 points to NM-11; KD-01 closed |
 
 > **Keeping this current:** when you accept a new trade-off, add it to *Known Deviations* with an exit
 > condition. When you add a rule, give it an ID, a severity, a *why*, and a check. A rule without an

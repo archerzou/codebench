@@ -152,7 +152,7 @@ screenshots) and `artifacts/` are git-ignored.
 **Goal:** signed in through the Traefik URLs, you open a problem and see its statement and starter code —
 in CodeBench's own visual design — and the shipped bundles pass the REA audit.
 
-### 1.0 Design foundation  ·  `docs/design/`  (any time before 1.8; doesn't block 1.1–1.7)
+### 1.0 Design foundation  ·  `docs/design/`  (any time before 1.8; doesn't block 1.1–1.7)  ✅ done
 
 Original work, derived from `docs/feature-map.md` and the API contract — **not** from screenshots of other
 products (ADR 0006). Keep it small; it is a contract for the UI, not a Figma project.
@@ -193,8 +193,9 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 ```
 
-`IUserContext` gains `string ExternalId` (the `sub`) and keeps `Guid UserId`, resolved lazily from
-`db.Users` by `ExternalId` and cached in HybridCache under `users:ext:{sub}`. Validate `Clerk:Issuer`
+`IUserContext` gains `string ExternalId` (the `sub`) and keeps `Guid UserId` (+ `TryGetUserId`), resolved
+once per request by `Authentication/UserResolutionMiddleware` from `db.Users` by `ExternalId` and cached in
+HybridCache under `users:ext:{sub}` (misses are not cached). ✅ done 2026-11-19 — see Decisions Log. Validate `Clerk:Issuer`
 at startup *[SC-06]*. **Why azp:** Clerk tokens have no audience; `azp` is what stops a token minted for
 another site being accepted *[SC-02]*. Add `Svix` to `Directory.Packages.props` *[XC-01]*.
 
@@ -636,7 +637,7 @@ Cloudflare Tunnel + Clerk production instance on your own domain.
 ```
 1. ENTITY      Features/Bookmarks/Bookmark.cs (+ BookmarkErrors, domain event if needed)   /add-entity
 2. CONFIG      Database/Configurations/BookmarkConfiguration.cs (unique user_id+problem_id)
-3. MIGRATION   /add-migration Add_Bookmarks
+3. MIGRATION   /add-migration Phase7_Bookmarks                                               [NM-09]
 4. SLICE       Features/Bookmarks/AddBookmark.cs — Command, Validator, Handler, Endpoint   /add-feature
 5. CACHE       BookmarkCacheKeys; invalidate in the command                                [QY-05]
 6. TESTS       unit (handler failure paths + happy path), validator, integration          [TS-01]

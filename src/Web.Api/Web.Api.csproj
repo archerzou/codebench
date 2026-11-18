@@ -28,6 +28,7 @@
 
     <!-- Authentication -->
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Svix" />
 
     <!-- Health checks -->
     <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />

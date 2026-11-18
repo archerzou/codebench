@@ -49,12 +49,18 @@ Everything for the slice lives here — there is no separate Application/Domain/
 
 | Artifact | Pattern | Example |
 |---|---|---|
-| Slice file & class | `{Verb}{Entity}` / `Get{X}` | `Features/Todos/ArchiveTodo.cs` → `public static class ArchiveTodo` |
-| Command | nested `Command` | `ArchiveTodo.Command` |
-| Query | nested `Query` | `GetOverdueTodos.Query` |
-| Handler | nested `internal sealed Handler` | `ArchiveTodo.Handler` |
-| Validator | nested `Validator` | `ArchiveTodo.Validator` |
-| Response | nested `Response` | `GetOverdueTodos.Response` |
-| Endpoint | nested `Endpoint : IEndpoint` | `ArchiveTodo.Endpoint` |
-| Unit test | `{UseCase}HandlerTests` | `ArchiveTodoHandlerTests` |
-| Test method | `Handle_Should_{Outcome}_When{Condition}` | `Handle_Should_ReturnNotFound_WhenTodoDoesNotExist` |
+Full rules: `context/code_rules.md` Part 12 (NM-*), checked by `scripts/check-rules.ps1`.
+
+| Artifact | Pattern | Example |
+|---|---|---|
+| Slice file & class | `{Verb}{Noun}` — verb first, singular for one, plural for many | `Features/Problems/PublishProblem.cs` → `public static class PublishProblem`; `GetProblems`, `GetProblem` |
+| Command | nested `Command` | `PublishProblem.Command` |
+| Query | nested `Query` | `GetProblems.Query` |
+| Handler | nested `internal sealed Handler` | `PublishProblem.Handler` |
+| Validator | nested `Validator` | `PublishProblem.Validator` |
+| Response | nested `Response` | `GetProblems.Response` |
+| Endpoint | nested `Endpoint : IEndpoint` | `PublishProblem.Endpoint` |
+| Handler unit test | `tests/Web.Api.UnitTests/{Feature}/{UseCase}HandlerTests.cs` | `PublishProblemHandlerTests` |
+| Validator unit test | `tests/Web.Api.UnitTests/{Feature}/{UseCase}ValidatorTests.cs` | `PublishProblemValidatorTests` |
+| Integration test | `tests/IntegrationTests/{Feature}/{UseCase}Tests.cs` | `PublishProblemTests` |
+| Test method | `{Subject}_Should_{Outcome}[_When_{Condition}]` | `Handle_Should_ReturnNotFound_When_ProblemDoesNotExist`, `PublishProblem_Should_Return409_When_NotValidated` |

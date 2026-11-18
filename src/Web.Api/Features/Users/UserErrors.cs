@@ -8,19 +8,8 @@ public static class UserErrors
         "Users.NotFound",
         $"The user with the Id = '{userId}' was not found");
 
-    public static Error Unauthorized() => Error.Failure(
-        "Users.Unauthorized",
-        "You are not authorized to perform this action.");
-
-    public static readonly Error NotFoundByEmail = Error.NotFound(
-        "Users.NotFoundByEmail",
-        "The user with the specified email was not found");
-
-    public static readonly Error EmailNotUnique = Error.Conflict(
-        "Users.EmailNotUnique",
-        "The provided email is not unique");
-
-    public static readonly Error InvalidRefreshToken = Error.Problem(
-        "Users.InvalidRefreshToken",
-        "The provided refresh token is invalid or has expired");
+    /// <summary>Signed in with Clerk, but no local account exists yet (created on first request, step 1.4).</summary>
+    public static readonly Error NotProvisioned = Error.NotFound(
+        "Users.NotProvisioned",
+        "Your account has not been set up yet. Sign out and sign in again.");
 }

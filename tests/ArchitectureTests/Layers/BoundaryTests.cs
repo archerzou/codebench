@@ -17,7 +17,7 @@ public class BoundaryTests : BaseTest
     ];
 
     [Fact]
-    public void Worker_Should_NotReference_DatabaseOrApi()
+    public void Worker_Should_NotReferenceDatabaseOrApi()
     {
         string[] referenced = ReferencedAssemblyNames(WorkerAssembly);
 
@@ -27,7 +27,7 @@ public class BoundaryTests : BaseTest
     }
 
     [Fact]
-    public void Contracts_Should_OnlyReference_Bcl()
+    public void Contracts_Should_OnlyReferenceBcl()
     {
         string[] referenced = ReferencedAssemblyNames(ContractsAssembly);
 

@@ -1,10 +1,7 @@
-using System.Text;
 using FluentValidation;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
-using Microsoft.IdentityModel.Tokens;
 using Web.Api.Authentication;
 using Web.Api.Authorization;
 using Web.Api.Common;
@@ -107,30 +104,11 @@ public static class DependencyInjection
         return services;
     }
 
+    // Clerk validates identity (ADR 0001); the API never issues tokens.
     private static IServiceCollection AddAuthenticationInternal(
         this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(o =>
-            {
-                o.RequireHttpsMetadata = false;
-                o.TokenValidationParameters = new TokenValidationParameters
-                {
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["Jwt:Secret"]!)),
-                    ValidIssuer = configuration["Jwt:Issuer"],
-                    ValidAudience = configuration["Jwt:Audience"],
-                    ClockSkew = TimeSpan.Zero
-                };
-            });
-
-        services.AddHttpContextAccessor();
-        services.AddScoped<IUserContext, UserContext>();
-        services.AddSingleton<IPasswordHasher, PasswordHasher>();
-        services.AddSingleton<ITokenProvider, TokenProvider>();
-
-        return services;
-    }
+        IConfiguration configuration) =>
+        services.AddClerkAuthentication(configuration);
 
     private static IServiceCollection AddAuthorizationInternal(this IServiceCollection services)
     {

@@ -1,5 +1,9 @@
 using System.Net.Http.Headers;
-using System.Net.Http.Json;
+using IntegrationTests.Authentication;
+using Microsoft.Extensions.DependencyInjection;
+using Web.Api.Common;
+using Web.Api.Database;
+using Web.Api.Features.Users;
 
 namespace IntegrationTests;
 
@@ -8,50 +12,40 @@ public abstract class BaseIntegrationTest
 {
     protected BaseIntegrationTest(IntegrationTestWebAppFactory factory)
     {
+        Factory = factory;
         HttpClient = factory.CreateClient();
     }
 
-    protected HttpClient HttpClient { get; }
+    protected IntegrationTestWebAppFactory Factory { get; }
 
-    protected sealed record AccessTokens(string AccessToken, string RefreshToken);
+    protected HttpClient HttpClient { get; }
 
     protected static string UniqueEmail() => $"test-{Guid.NewGuid():N}@example.com";
 
-    protected async Task<Guid> RegisterUserAsync(string email)
+    /// <summary>A fresh Clerk-style user id per test (TS-05).</summary>
+    protected static string UniqueExternalId() => $"user_test_{Guid.NewGuid():N}";
+
+    /// <summary>Inserts a local user, as the webhook / first-request upsert will (step 1.4).</summary>
+    protected async Task<User> CreateUserAsync(string? externalId = null, string? email = null)
     {
-        var request = new
-        {
-            email,
-            firstName = "Test",
-            lastName = "User",
-            password = "Password123"
-        };
+        using IServiceScope scope = Factory.Services.CreateScope();
+        ApplicationDbContext db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        IDateTimeProvider clock = scope.ServiceProvider.GetRequiredService<IDateTimeProvider>();
 
-        HttpResponseMessage response = await HttpClient.PostAsJsonAsync("users/register", request);
-        response.EnsureSuccessStatusCode();
+        var user = User.Create(externalId ?? UniqueExternalId(), email ?? UniqueEmail(), clock.UtcNow);
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
 
-        return await response.Content.ReadFromJsonAsync<Guid>();
+        return user;
     }
 
-    protected async Task<AccessTokens> LoginAsync(string email)
+    /// <summary>Creates a local user and authenticates the client with a valid token for them.</summary>
+    protected async Task<User> SignInAsNewUserAsync()
     {
-        var request = new { email, password = "Password123" };
+        User user = await CreateUserAsync();
+        Authenticate(TestJwt.Create(user.ExternalId));
 
-        HttpResponseMessage response = await HttpClient.PostAsJsonAsync("users/login", request);
-        response.EnsureSuccessStatusCode();
-
-        AccessTokens? tokens = await response.Content.ReadFromJsonAsync<AccessTokens>();
-
-        return tokens!;
-    }
-
-    protected async Task<(Guid UserId, AccessTokens Tokens)> RegisterAndLoginAsync()
-    {
-        string email = UniqueEmail();
-        Guid userId = await RegisterUserAsync(email);
-        AccessTokens tokens = await LoginAsync(email);
-
-        return (userId, tokens);
+        return user;
     }
 
     protected void Authenticate(string accessToken)

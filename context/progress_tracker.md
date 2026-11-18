@@ -8,7 +8,7 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 **Legend:** `[ ]` todo · `[x]` done · `[~]` in progress · `[!]` blocked (add a note in the Blockers Log)
 **Tracks:** 🔍 = REA self-audit (build plan Appendix D) · 🎨 = original design (`docs/design/`)
 
-**Status:** Phase 0 ✅ complete (2026-11-19) — next: Phase 1 (1.0 design and 1.1 Clerk can run in parallel)
+**Status:** Phase 1 in progress — 1.0 design ✅, 1.1 Clerk ✅ (2026-11-19); next: 1.2 entities (finish `User`), 1.3 roles
 **Started:** 2026-11-17 **Last updated:** 2026-11-19
 
 ---
@@ -18,7 +18,7 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 | Phase | Title | Items | Done | Gate |
 |---|---|---|---|---|
 | 0 | Setup & self-audit baseline | 23 | 23 | Release build clean, tests green, infra `up`, RA-01..03 ok |
-| 1 | Walking Skeleton | 60 | 0 | Signed in via Traefik, problem visible in own design; RA-04..07, 09 ok |
+| 1 | Walking Skeleton | 60 | 11 | Signed in via Traefik, problem visible in own design; RA-04..07, 09 ok |
 | 2 | Algorithms Grading | 57 | 0 | Algorithms graded with time + allocations; hostile suite; RA-01/03 on publish output |
 | 3 | CI/CD | 20 | 1 | Merge → GHCR images; `update.sh` deploys + rolls back; `rea-audit` CI job |
 | 3A | Admin Console | 28 | 0 | Create → validate → publish → learner solves; admin code lazy-only |
@@ -26,7 +26,7 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 | 5 | Database Grader | 13 | 0 | EF Core problem graded on plan rules, SQL shown |
 | 6 | More Graders | 11 | 0 | One problem per grader live |
 | 7 | Product Polish | 10 | 0 | Progress, paths, plans, sandbox payment |
-| | **Total** | **239** | **24** | |
+| | **Total** | **239** | **35** | |
 
 ---
 
@@ -90,21 +90,21 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 ## Phase 1 — Walking Skeleton  ·  plan §1 · guide 02 §1–3,5,8,9 · 04 · 05 · 09
 
 ### 1.0 🎨 Design foundation (before 1.8; doesn't block 1.1–1.7)
-- [ ] **1.0.1** `docs/design/brief.md` — audience, 3–5 principles, voice & tone, name/wordmark direction (original)
-- [ ] **1.0.2** `docs/design/tokens.css` — Tailwind v4 `@theme`: colour roles light + dark (AA ratios recorded), type, spacing, radius
-- [ ] **1.0.3** `docs/design/pages.md` + low-fi wireframes for catalog and editor
-- [ ] **1.0.4** `docs/design/components.md` — Button, Badge, DifficultyBadge, VerdictBadge (icon + text), BudgetBar, Tabs, DataTable, EmptyState, Spinner, CodePane
+- [x] **1.0.1** `docs/design/brief.md` — audience, 5 principles (numbers first, calm editor, honest feedback, keyboard first, budgets up front), voice & tone, `codebench▍` wordmark
+- [x] **1.0.2** `docs/design/tokens.css` — Tailwind v4 `@theme inline` colour roles light + dark; all text pairs ≥ 5.59:1, control borders/focus ≥ 3.56:1 (measured, recorded); type, radius, shadow
+- [x] **1.0.3** `docs/design/pages.md` + wireframes `catalog.md`, `editor.md` (states, behaviour, < 72 rem layouts)
+- [x] **1.0.4** `docs/design/components.md` — Button, Badge, Difficulty/Track/VerdictBadge, BudgetBar (`role="meter"`), Tabs, DataTable, EmptyState, Spinner, CodePane, ThemeToggle, Kbd + Monaco theme
 
 ### 1.1 Clerk replaces template JWT (closes KD-01)
-- [ ] **1.1.1** Register/Login/Refresh slices, `RefreshToken`, `TokenProvider`, password hashing, `Jwt` config, `JWT_SECRET` deleted
-- [ ] **1.1.2** `AddJwtBearer` with `Authority = Clerk:Issuer`, `MapInboundClaims = false`, lifetime + issuer validated
-- [ ] **1.1.3** `azp` checked against `Clerk:AuthorizedParties` in `OnTokenValidated`
-- [ ] **1.1.4** `IUserContext.ExternalId` (`sub`) + lazily resolved `UserId`, cached `users:ext:{sub}`
-- [ ] **1.1.5** `Clerk:Issuer` validated at startup (fail fast)
-- [ ] **1.1.6** KD-01 baseline entries removed from `scripts/check-rules.ps1`
+- [x] **1.1.1** Register/Login/Refresh, `RefreshToken`, `TokenProvider`, password hashing, `GetUserById`/`GetUserByEmail`, `Jwt` config, `JWT_SECRET` deleted (19 files); migration `Phase1_Clerk_Users`
+- [x] **1.1.2** `AddJwtBearer` via `IOptions<ClerkOptions>`: `Authority = Clerk:Issuer`, `MapInboundClaims = false`, issuer + signature + lifetime validated (`ValidateAudience = false` justified, CA5404)
+- [x] **1.1.3** `azp` checked in `OnTokenValidated` (`AuthorizedPartyValidator`: case-insensitive, trailing-slash tolerant, missing → reject)
+- [x] **1.1.4** `IUserContext.ExternalId` (`sub`) + `UserId`/`TryGetUserId`, resolved once per request by `UserResolutionMiddleware`, cached `users:ext:{sub}` (misses not cached)
+- [x] **1.1.5** `ClerkOptions` `ValidateOnStart`: https issuer, rejects the `YOUR-INSTANCE` placeholder, origins must be http(s) — verified the API refuses to start
+- [x] **1.1.6** KD-01 baseline entries removed; `check-rules.ps1` passes with an empty baseline
 
 ### 1.2 Entities
-- [ ] **1.2.1** `User` (`ExternalId` unique, `Role`, `Plan`, `IsDisabled`, `IsDemo`)
+- [~] **1.2.1** `User` — done: `ExternalId` (unique), `Email` (indexed, not unique), `CreatedAt`, `Create`/`ChangeEmail`; pending: `Role`, `Plan`, `IsDisabled`, `IsDemo`
 - [ ] **1.2.2** `Problem` (slug unique, status/version, signature, statement, starter, reference, limits jsonb, tags, sort order, `xmin`)
 - [ ] **1.2.3** `TestCase` (data-driven: args/expected jsonb, compare, budgets, hidden, order)
 - [ ] **1.2.4** `RolePermission`; enums `ProblemStatus`, `Track`, `Difficulty`, `Role`
@@ -130,7 +130,7 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 ### 1.6 Slices
 - [ ] **1.6.1** `Problems/GetProblems` — PagedList, filters, sort allow-list, Published only, cached
 - [ ] **1.6.2** `Problems/GetProblem` — visible tests only, `hiddenTestCount`, no reference, Pro gating, cached
-- [ ] **1.6.3** `Users/GetMe` — role, plan, permissions
+- [~] **1.6.3** `Users/GetMe` — done: id, email, permissions (from `PermissionProvider`), `NotProvisioned` 404; pending: role, plan
 - [ ] **1.6.4** `ProblemCacheKeys`; seeding invalidates `problems:*`
 
 ### 1.7 Infrastructure wiring
@@ -163,9 +163,9 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 
 ### 1.11 Tests
 - [ ] **1.11.1** Unit: handler + validator tests for every new slice
-- [ ] **1.11.2** Integration: test JWT scheme (`sub` + `azp`) replaces register/login helpers
+- [x] **1.11.2** Integration: `TestJwt` (RSA-signed `iss`/`sub`/`azp`/`exp`) through the **real** JwtBearer pipeline (static OIDC config); 7 token tests (valid, trailing slash, wrong/missing azp, wrong issuer, expired, untrusted key)
 - [ ] **1.11.3** Integration: `GET /problems/{slug}` JSON has no hidden tests / reference
-- [ ] **1.11.4** Integration: anonymous catalog 200; `GET /me` 401 anonymous, 200 signed in
+- [~] **1.11.4** Integration: `GET /me` 401 anonymous, 200 signed in, 404 not provisioned, miss not cached — done; anonymous catalog 200 — pending (1.6.1)
 - [ ] **1.11.5** Frontend: Vitest + MSW test for the catalog
 
 ### 1.12 🔍 REA audits
@@ -523,6 +523,18 @@ Record every deviation from `build_plan.md` / the guide and why — future-you w
 | 2026-11-19 | Phase 0 renamed "Setup & self-audit baseline"; recon items replaced by REA setup items | Recon dropped; REA's value is on our own builds |
 | 2026-11-19 | `rea-audit.ps1`: missing artefact = `skip` locally, `FAIL` with `-Ci`; RA-08 is informational | Script runs in every phase without false failures, but CI can't silently skip a boundary check |
 | 2026-11-19 | REA baseline lives in git-ignored `artifacts/rea/baseline/` locally; CI uses the last `main` run's artifact | Evidence contains absolute local paths; not worth committing |
+| 2026-11-19 | `User` reshaped during 1.1 (migration `Phase1_Clerk_Users`); Role/Plan/flags follow in 1.2's `Phase1_Problems_Users` | Removing password hashing and keying users by Clerk `sub` can't wait; keeps 1.2 focused on the role matrix |
+| 2026-11-19 | `UserId` resolved by `UserResolutionMiddleware` (after authentication) instead of lazily inside `UserContext` | A lazy DB lookup in a sync property would be sync-over-async (XC-03); 1.4.1 turns it into the upsert |
+| 2026-11-19 | `PermissionAuthorizationHandler` fails closed; template "succeed for any authenticated user" TODO removed | SC-03; until 1.3 no permission is granted, so no `HasPermission` endpoint is open by accident |
+| 2026-11-19 | Template `GetUserById` / `GetUserByEmail` deleted; minimal `GetMe` added early | They exposed first/last name (gone) by id; `GetMe` gives the auth tests a real protected route |
+| 2026-11-19 | Integration tests keep the real JwtBearer handler and swap only the key source (`StaticConfigurationManager`) | A fake auth scheme would skip issuer/lifetime/azp validation — exactly what SC-02 needs tested |
+| 2026-11-19 | `ValidateAudience = false` with a justified `#pragma` (CA5404) | Clerk session tokens have no `aud`; `azp` check replaces it |
+| 2026-11-19 | Naming rules NM-01…NM-14 (`code_rules.md` Part 12): 10 script checks (case-sensitive) + `.editorconfig` IDE1006 as build error | Consistency enforced by tooling, not memory; each check probe-tested to fail on a planted violation |
+| 2026-11-19 | `context/` keeps snake_case file names (exception to NM-12) | Working docs referenced by name in prompts; user decision |
+| 2026-11-19 | CQRS contract method stays `Handle` (exception to NM-04) | Template/guide/skills convention; user decision — no churn |
+| 2026-11-19 | Tests: one class per use case (`{UseCase}HandlerTests` / `ValidatorTests` / `{UseCase}Tests`), skills updated | Mirrors one-file-per-slice (VS-01); skills had 3 conflicting patterns |
+| 2026-11-19 | `Contracts/Grading.cs` split into one file per record; middleware `Invoke` → `InvokeAsync` | NM-01 / NM-05; the rename exposed a real bug: `RequestContextLoggingMiddleware` dropped `CorrelationId` after the first await (now awaited inside `using`) |
+| 2026-11-19 | `check-rules.ps1` XC-02 rewritten | It was vacuous: `Find` skips `#` lines and `tests/` wasn't scanned — an unjustified pragma in `BaseHandlerTest` had slipped through |
 
 ---
 
