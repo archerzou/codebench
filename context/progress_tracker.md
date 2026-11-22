@@ -8,8 +8,8 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 **Legend:** `[ ]` todo · `[x]` done · `[~]` in progress · `[!]` blocked (add a note in the Blockers Log)
 **Tracks:** 🔍 = REA self-audit (build plan Appendix D) · 🎨 = original design (`docs/design/`)
 
-**Status:** Phase 1 in progress — 1.0–1.3 ✅, 1.4 code ✅, 1.5 ✅, 1.6 ✅ (2026-11-21). **Open: 1.4.3** (Clerk session-token claims + webhook test — yours, not done). 1.7 ✅ (2026-11-22). Next: 1.8 React app
-**Started:** 2026-11-17 **Last updated:** 2026-11-19
+**Status:** Phase 1 in progress — 1.0–1.3 ✅, 1.4 code ✅, 1.5 ✅, 1.6 ✅ (2026-11-21). **Open: 1.4.3** (Clerk session-token claims + webhook test — yours, not done). 1.7 ✅ (2026-11-22). 1.8 ✅ (2026-11-23). Next: 1.9 Astro site
+**Started:** 2026-11-17 **Last updated:** 2026-11-23
 
 ---
 
@@ -18,7 +18,7 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 | Phase | Title | Items | Done | Gate |
 |---|---|---|---|---|
 | 0 | Setup & self-audit baseline | 23 | 23 | Release build clean, tests green, infra `up`, RA-01..03 ok |
-| 1 | Walking Skeleton | 60 | 37 | Signed in via Traefik, problem visible in own design; RA-04..07, 09 ok |
+| 1 | Walking Skeleton | 60 | 45 | Signed in via Traefik, problem visible in own design; RA-04..07, 09 ok |
 | 2 | Algorithms Grading | 57 | 0 | Algorithms graded with time + allocations; hostile suite; RA-01/03 on publish output |
 | 3 | CI/CD | 20 | 1 | Merge → GHCR images; `update.sh` deploys + rolls back; `rea-audit` CI job |
 | 3A | Admin Console | 28 | 0 | Create → validate → publish → learner solves; admin code lazy-only |
@@ -26,7 +26,7 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 | 5 | Database Grader | 13 | 0 | EF Core problem graded on plan rules, SQL shown |
 | 6 | More Graders | 11 | 0 | One problem per grader live |
 | 7 | Product Polish | 10 | 0 | Progress, paths, plans, sandbox payment |
-| | **Total** | **239** | **61** | |
+| | **Total** | **239** | **69** | |
 
 ---
 
@@ -140,14 +140,14 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 - [x] **1.7.4** `--migrate` (`Database/MigrateCommand`): applies pending migrations, exits 0 (verified twice vs compose Postgres: "up to date") / 1 (verified with an unreachable DB); `--migrate --seed` chains
 
 ### 1.8 React app
-- [ ] **1.8.1** Vite React-TS in `apps/web`; strict tsconfig + `@/*` alias; ESLint (ts strict, react-hooks, jsx-a11y; `react-refresh` override for `components/ui/`, KD-07); `build.sourcemap: false`; deps incl. `zustand`, `lucide-react` (ADR 0007)
-- [ ] **1.8.2** `config.ts` (runtime `window.__CONFIG__` + `VITE_*` fallback) and `index.html` loads `/config.js`
-- [ ] **1.8.3** `lib/api.ts` — `useApi` (token per request), `ApiError` from ProblemDetails
-- [ ] **1.8.4** 🎨 `tokens.css` wired into Tailwind (incl. shadcn bridge; `init`'s default palette deleted); `shadcn init` + `add` primitives, reviewed and re-skinned (FE-16); shared components from `components.md` with lucide icons; zustand `useThemeStore` + `useDraftStore` (FE-15); Monaco theme from tokens; light/dark
-- [ ] **1.8.5** `main.tsx` providers; routes `/`, `/problems/:slug`, `/sign-in/*`, `/sign-up/*`, `/me`
-- [ ] **1.8.6** Catalog page per wireframe (TanStack Query, filters)
-- [ ] **1.8.7** Editor page per wireframe — statement pane + Monaco (`csharp`) + starter code + `localStorage` drafts
-- [ ] **1.8.8** Dockerfile, `nginx.conf`, `docker/40-config.sh` (publishable key only)
+- [x] **1.8.1** Vite React-TS in `apps/web`; strict tsconfig + `@/*` alias; ESLint (ts strict, react-hooks, jsx-a11y; `react-refresh` override for `components/ui/`, KD-07); `build.sourcemap: false`; deps incl. `zustand`, `lucide-react` (ADR 0007) — ESLint 9 (jsx-a11y doesn't support 10) + TypeScript 6.0 (typescript-eslint doesn't support 7) instead of create-vite's oxlint/TS 7; `strictTypeChecked`, zero warnings; Vitest + MSW 3
+- [x] **1.8.2** `config.ts` (runtime `window.__CONFIG__` + `VITE_*` fallback) and `index.html` loads `/config.js` — `public/config.js` dev stub; `isDev` exported for FE-15; pre-paint theme script in `index.html`
+- [x] **1.8.3** `lib/api.ts` — `useApi` (token per request), `ApiError` from ProblemDetails — also zod parse per call (FE-06), `ApiError.network`, `lib/auth.ts` `useSession()` wrapper (mocked in tests), `lib/queryClient.ts` (no retry on 4xx)
+- [x] **1.8.4** 🎨 `tokens.css` wired into Tailwind (incl. shadcn bridge; `init`'s default palette deleted); `shadcn init` + `add` primitives, reviewed and re-skinned (FE-16); shared components from `components.md` with lucide icons; zustand `useThemeStore` + `useDraftStore` (FE-15); Monaco theme from tokens; light/dark — `components.json` written by hand (Radix, new-york); every primitive re-skinned (no `bg-accent` hovers, `text-white`, `bg-black`, ring halos, `next-themes`); `danger` = `bg-fail text-surface`; Clerk `@clerk/themes` shadcn theme mapped onto `--cb-*`; Monaco bundled locally (no jsDelivr), C# grammar only, lazy chunk
+- [x] **1.8.5** `main.tsx` providers; routes `/`, `/problems/:slug`, `/sign-in/*`, `/sign-up/*`, `/me` — ClerkProvider inside the root route (router-aware `routerPush`/`routerReplace`); editor route `lazy()`; skip link; 404 + error pages; MissingConfig screen when the key is absent
+- [x] **1.8.6** Catalog page per wireframe (TanStack Query, filters) — URL-driven filters (track/difficulty/q/sort/page), search debounced 250 ms, < 72 rem filters dialog, 6 skeleton rows, EmptyState + Clear, ProblemDetails error + Retry, pagination
+- [x] **1.8.7** Editor page per wireframe — statement pane + Monaco (`csharp`) + starter code + `localStorage` drafts — budgets card, examples (param names from the signature), hidden count only, resizable + remembered split (keyboard splitter), Reset confirm (focus back to editor), drafts debounced 500 ms (zustand persist `codebench-drafts`), Run/Submit disabled with "Grading arrives in Phase 2"
+- [x] **1.8.8** Dockerfile, `nginx.conf`, `docker/40-config.sh` (publishable key only) — `40-config.sh` JSON-escapes values and refuses a non-`pk_` key; CR-stripped in the image (`.gitattributes` `*.sh eol=lf`); security headers; image built + smoke-tested (config.js, SPA fallback, cache headers, no `.map`)
 
 ### 1.9 Astro site
 - [ ] **1.9.1** Astro minimal + Tailwind **v4 via `@tailwindcss/vite`** (not `@astrojs/tailwind`) + sitemap + mdx, `output: 'static'`, no client framework (ADR 0007)
@@ -573,6 +573,15 @@ Record every deviation from `build_plan.md` / the guide and why — future-you w
 | 2026-11-22 | Own Redis/NATS health checks instead of `AspNetCore.HealthChecks.Redis/Nats`; NATS.Net 3.4.1 | The NATS package pins NATS.Net 2.x; own checks report a missing connection string as Unhealthy instead of throwing |
 | 2026-11-22 | Redis/NATS removed from `appsettings.Development.json`; user-secrets only | Compose Redis/NATS require passwords, so the password-less dev values could never authenticate |
 | 2026-11-22 | Integration tests run real Redis + NATS (Testcontainers) | `/health` and the L2 path behave as in production; caught the double-HybridCache bug |
+| 2026-11-23 | `apps/web` lint/type stack: ESLint 9 + typescript-eslint `strictTypeChecked` + TypeScript **6.0** (create-vite 9 now ships oxlint + TS 7) | FE-12 names ESLint + jsx-a11y; `eslint-plugin-jsx-a11y` supports ESLint ≤ 9 and `typescript-eslint` TS < 6.1. Revisit when both catch up |
+| 2026-11-23 | Monaco bundled from `monaco-editor` (`loader.config({ monaco })`, editor worker via `?worker`, only the C# grammar) instead of `@monaco-editor/react`'s jsDelivr default; `dompurify` pinned ≥ 3.4.18 via `overrides` | No third-party script at runtime (CSP/offline, RA-05 evidence stays local); Monaco 0.57 depends on a DOMPurify with open advisories |
+| 2026-11-23 | `components.json` written by hand; shadcn CLI used only for `add` | The current CLI's `init` is preset-based (no `new-york`/Radix path non-interactively); without `lib/utils.ts` the CLI resolved `cn` to an unrelated npm package named `cn` — removed, `lib/utils.ts` added, imports fixed |
+| 2026-11-23 | ClerkProvider inside the root route instead of around `RouterProvider` (guide 04 snippet) | Clerk gets `routerPush`/`routerReplace`, so sign-in steps navigate client-side; QueryClientProvider stays in `main.tsx` |
+| 2026-11-23 | Clerk UI themed with `@clerk/themes` shadcn theme; unprefixed `--primary`, `--muted`, … mapped onto `--cb-*` in `apps/web/src/index.css` | Clerk's theme reads unprefixed shadcn vars, which `tokens.css` only exposes via `@theme inline`; same pairs as the bridge, so the measured contrast holds |
+| 2026-11-23 | App shell in `src/app/` (RootLayout, AppLayout, AppHeader, NotFound, RouteError, MissingConfig); `Track`/`Difficulty` + `trackLabel` in `lib/domain.ts` | FE-02's tree has no home for layout; shared enum types can't live in component files (react-refresh) or a feature (components may not import features) |
+| 2026-11-23 | Drafts persist under one zustand key `codebench-drafts` (slug → code), not `draft:{slug}` per key as the editor wireframe says | FE-15 / guide 04: `persist` with explicit `name` + `version`; one store, one migration path |
+| 2026-11-23 | Catalog rows show title · track · difficulty · Free/Pro · tags; **no statement summary or budgets** (wireframe shows both) | `ProblemSummary` has neither field; adding them is an API-contract change (`summary`, budget hints) — left for a later slice rather than faked client-side |
+| 2026-11-23 | Header has no Admin link yet | `/admin` arrives in 3A; a link to a 404 is worse than none |
 | 2026-11-19 | `check-rules.ps1` XC-02 rewritten | It was vacuous: `Find` skips `#` lines and `tests/` wasn't scanned — an unjustified pragma in `BaseHandlerTest` had slipped through |
 
 ---

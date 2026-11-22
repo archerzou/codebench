@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>CodeBench</title>
+    <!-- Apply the stored theme before first paint (useThemeStore, key codebench-theme). -->
+    <script>
+      (function () {
+        try {
+          var stored = JSON.parse(localStorage.getItem('codebench-theme') || 'null');
+          var pref = (stored && stored.state && stored.state.preference) || 'system';
+          var dark = pref === 'dark' || (pref === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.classList.toggle('dark', dark);
+        } catch (e) {}
+      })();
+    </script>
+    <!-- Runtime config (window.__CONFIG__), written by docker/40-config.sh at container start. Public values only. -->
+    <script src="/config.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
