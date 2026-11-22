@@ -8,7 +8,7 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 **Legend:** `[ ]` todo · `[x]` done · `[~]` in progress · `[!]` blocked (add a note in the Blockers Log)
 **Tracks:** 🔍 = REA self-audit (build plan Appendix D) · 🎨 = original design (`docs/design/`)
 
-**Status:** Phase 1 in progress — 1.0 design ✅, 1.1 Clerk ✅ (2026-11-19); next: 1.2 entities (finish `User`), 1.3 roles
+**Status:** Phase 1 in progress — 1.0–1.3 ✅, 1.4 code ✅, 1.5 ✅, 1.6 ✅ (2026-11-21). **Open: 1.4.3** (Clerk session-token claims + webhook test — yours, not done). 1.7 ✅ (2026-11-22). Next: 1.8 React app
 **Started:** 2026-11-17 **Last updated:** 2026-11-19
 
 ---
@@ -18,7 +18,7 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 | Phase | Title | Items | Done | Gate |
 |---|---|---|---|---|
 | 0 | Setup & self-audit baseline | 23 | 23 | Release build clean, tests green, infra `up`, RA-01..03 ok |
-| 1 | Walking Skeleton | 60 | 11 | Signed in via Traefik, problem visible in own design; RA-04..07, 09 ok |
+| 1 | Walking Skeleton | 60 | 37 | Signed in via Traefik, problem visible in own design; RA-04..07, 09 ok |
 | 2 | Algorithms Grading | 57 | 0 | Algorithms graded with time + allocations; hostile suite; RA-01/03 on publish output |
 | 3 | CI/CD | 20 | 1 | Merge → GHCR images; `update.sh` deploys + rolls back; `rea-audit` CI job |
 | 3A | Admin Console | 28 | 0 | Create → validate → publish → learner solves; admin code lazy-only |
@@ -26,7 +26,7 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 | 5 | Database Grader | 13 | 0 | EF Core problem graded on plan rules, SQL shown |
 | 6 | More Graders | 11 | 0 | One problem per grader live |
 | 7 | Product Polish | 10 | 0 | Progress, paths, plans, sandbox payment |
-| | **Total** | **239** | **35** | |
+| | **Total** | **239** | **61** | |
 
 ---
 
@@ -104,57 +104,57 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 - [x] **1.1.6** KD-01 baseline entries removed; `check-rules.ps1` passes with an empty baseline
 
 ### 1.2 Entities
-- [~] **1.2.1** `User` — done: `ExternalId` (unique), `Email` (indexed, not unique), `CreatedAt`, `Create`/`ChangeEmail`; pending: `Role`, `Plan`, `IsDisabled`, `IsDemo`
-- [ ] **1.2.2** `Problem` (slug unique, status/version, signature, statement, starter, reference, limits jsonb, tags, sort order, `xmin`)
-- [ ] **1.2.3** `TestCase` (data-driven: args/expected jsonb, compare, budgets, hidden, order)
-- [ ] **1.2.4** `RolePermission`; enums `ProblemStatus`, `Track`, `Difficulty`, `Role`
-- [ ] **1.2.5** `Problem.Publish()` / `Archive()` guarded; `ProblemErrors`, `UserErrors`
-- [ ] **1.2.6** Configurations in `Database/Configurations/`; migration `Phase1_Problems_Users`
+- [x] **1.2.1** `User` — `ExternalId` (unique), `Email`, `Role`, `Plan`, `IsDisabled`, `IsDemo`, `CreatedAt`; `Create`, `CreateDemo` (`seed|…`), `ChangeRole` (idempotent, raises event), `Disable`/`Enable`; DB defaults `Learner`/`Free`
+- [x] **1.2.2** `Problem` — slug unique, status/version, signature, statement, starter, reference, `Limits` (jsonb), `Tags` (`text[]`), sort order, schema/seedSql/model, plan rules/metrics (jsonb), `xmin` shadow `RowVersion`; `CreateDraft(ProblemContent, …)`
+- [x] **1.2.3** `TestCase` — args/expected jsonb, `ExpectedException`, `Compare`, budgets, hidden, order; exactly-one-expectation guard + DB check; unique `(problem_id, name)`; cascade delete
+- [x] **1.2.4** `RolePermission` (composite key); enums `Role`, `Plan`, `ProblemStatus`, `Track`, `Difficulty`, `GraderKind`, `CompareMode` (stored as text)
+- [x] **1.2.5** `Problem.Publish()` (Draft → Published v+1, idempotent, Archived → 409) / `Archive()` (idempotent, Draft → 409); `ProblemErrors`, `UserErrors`; Created/Published/Archived + User Created/RoleChanged events
+- [x] **1.2.6** 4 configurations; migration `Phase1_Problems_Users` (5 check constraints, xmin not created as a column) applied to dev DB; 26 unit + 6 Postgres integration tests (round-trip, unique slug, stale `xmin` → concurrency exception, check constraint, cascade, defaults)
 
 ### 1.3 Roles & permissions
-- [ ] **1.3.1** `RoleSeeder` writes learner/author/admin matrix (idempotent, every start)
-- [ ] **1.3.2** `PermissionProvider` loads by `ExternalId`, cached 5 min, none for disabled users
-- [ ] **1.3.3** Permission names as constants
+- [x] **1.3.1** `RoleSeeder` syncs the learner/author/admin matrix (adds missing, removes stale, concurrent-safe `ON CONFLICT`); runs before requests via `RoleSeederHostedService`; clears the `permissions` cache tag on change; clear error if the schema is missing — verified on dev (20 rows) and an unmigrated Production DB
+- [x] **1.3.2** `PermissionProvider(db, cache)` loads by `ExternalId` (users.role ⋈ role_permissions), cached 5 min under `permissions:{externalId}` (tagged), none for disabled users, unknown users not cached; `GET /me` now lists real permissions
+- [x] **1.3.3** `Authorization/Permissions` — 11 constants + `All`; `RolePermissionMatrix` = guide 09 table (unit-tested exactly); template `Features/Users/Permissions.cs` removed
 
 ### 1.4 User sync
-- [ ] **1.4.1** Upsert-on-first-request middleware; bootstrap email → admin
-- [ ] **1.4.2** `Users/HandleClerkWebhook` — Svix verified in endpoint, handler upserts/updates/soft-deletes
-- [ ] **1.4.3** Webhook tested via tunnel or dashboard test event; `CLERK_WEBHOOK_SECRET` set
+- [x] **1.4.1** `UserResolutionMiddleware` provisions on a miss via `UserProvisioner` (email from the custom `email` claim; learner, or admin when the email is in `Admin:BootstrapEmails` **and** `email_verified` is true; concurrent first requests → one row)
+- [x] **1.4.2** `Users/HandleClerkWebhook` — `ClerkWebhookVerifier` (Svix, raw body, before parsing) in the endpoint; handler: created/updated → upsert + email sync (out-of-order safe, never changes roles), deleted → `User.MarkDeleted` (soft delete, anonymised, disabled) + cache drop; unknown types → 204; migration `Phase1_User_Deletion`
+- [ ] **1.4.3** **You:** add session-token claims + webhook endpoint in the Clerk dashboard, set `CLERK_WEBHOOK_SECRET` / user-secret, send a test event (steps in build plan 1.4)
 
 ### 1.5 Seeding from `problems/`
-- [ ] **1.5.1** `YamlDotNet`; `ProblemDefinition` matches the YAML shape
-- [ ] **1.5.2** `ProblemSeeder` insert-only, seeds as Published v1
-- [ ] **1.5.3** `--seed` / `--seed-demo` (Development only) flags in `Program.cs`; exits after seeding
-- [ ] **1.5.4** Problems 1–4 seeded (5–6 deferred to Phases 5–6)
+- [x] **1.5.1** `YamlDotNet` 18.1; `YamlToJsonConverter` keeps scalar types (plain → number/bool/null, quoted → string, CRLF → LF) → `ProblemDefinition`/`TestDefinition` (unknown keys rejected) + `ProblemDefinitionValidator`; all 6 repo files unit-tested
+- [x] **1.5.2** `ProblemSeeder` — insert-only (existing slug skipped, DB edits never overwritten), all files validated before any insert, one transaction per problem, race-safe, Published v1, clears the `problems` cache tag
+- [x] **1.5.3** `SeedCommand`: `--seed` (role matrix + problems, then exit; 0 ok / 1 failed / 2 refused), `--seed-demo` refused outside Development (demo seeder itself = 3A.7); path from `Seeding:ProblemsPath` → `/problems` → `{repo}/problems`; verified on the host **and** in the container (`docker compose --profile app run --rm api --seed` read the `/problems` mount, re-inserted a deleted problem); unexpected failures (DB down) exit 1, not a crash
+- [x] **1.5.4** Dev DB: `sum-of-evens`, `first-unique-char`, `merge-intervals`, `top-k-words` Published v1 (5/5/5/3 tests); `customers-since`, `shipping-cost-refactor` deferred automatically by grader (`ProblemSeeder.ImplementedGraders`)
 
 ### 1.6 Slices
-- [ ] **1.6.1** `Problems/GetProblems` — PagedList, filters, sort allow-list, Published only, cached
-- [ ] **1.6.2** `Problems/GetProblem` — visible tests only, `hiddenTestCount`, no reference, Pro gating, cached
-- [~] **1.6.3** `Users/GetMe` — done: id, email, permissions (from `PermissionProvider`), `NotProvisioned` 404; pending: role, plan
-- [ ] **1.6.4** `ProblemCacheKeys`; seeding invalidates `problems:*`
+- [x] **1.6.1** `Problems/GetProblems` — `PagedList`, track/difficulty (any case, unknown → 400), search title/slug/tag (parameterised), sort allow-list, page/pageSize clamped (≤ 100), Published only, cached `problems:list:{hash}` 10 min
+- [x] **1.6.2** `Problems/GetProblem` — visible tests only + `hiddenTestCount`, no reference (type-level guard test), Pro gating (Pro plan or `admin:access`, else 404) after a caller-independent `problems:{slug}` cache
+- [x] **1.6.3** `Users/GetMe` — id, email, role, plan, permissions (DB matrix), `NotProvisioned` 404
+- [x] **1.6.4** `ProblemCacheKeys` — `List(hash)`, `BySlug`, `Tag`; every entry tagged; seeding clears the tag
 
 ### 1.7 Infrastructure wiring
-- [ ] **1.7.1** Redis as HybridCache L2 (dev: `localhost:16379` + password via user-secrets)
-- [ ] **1.7.2** Health checks: Postgres + Redis + NATS at `/health`
-- [ ] **1.7.3** CORS origins verified (app, marketing, localhost dev ports)
-- [ ] **1.7.4** `--migrate` flag for Production
+- [x] **1.7.1** Redis as HybridCache L2 (`Common/Caching/RedisExtensions`, public `RedisCache` registered directly; dev: `localhost:16379` + password via user-secrets; unconfigured → L1-only + `/health` Unhealthy). `CachingTests`: L2 is Redis, read-through with L1 bypassed, one HybridCache instance
+- [x] **1.7.2** Health checks `postgres` / `redis` / `nats` at `/health` (5 s timeout each; own `RedisHealthCheck` + `NatsHealthCheck` on NATS.Net 3.4). `HealthTests` green against Testcontainers Redis + NATS
+- [x] **1.7.3** CORS: exact-origin validation in `ReadAllowedOrigins` (wildcard / path / trailing slash / no scheme fail startup; blanks dropped); unit tests + `CorsTests` preflight (4 listed origins allowed with credentials, 3 foreign denied)
+- [x] **1.7.4** `--migrate` (`Database/MigrateCommand`): applies pending migrations, exits 0 (verified twice vs compose Postgres: "up to date") / 1 (verified with an unreachable DB); `--migrate --seed` chains
 
 ### 1.8 React app
-- [ ] **1.8.1** Vite React-TS in `apps/web`; strict tsconfig; ESLint (ts strict, react-hooks, jsx-a11y); `build.sourcemap: false`
+- [ ] **1.8.1** Vite React-TS in `apps/web`; strict tsconfig + `@/*` alias; ESLint (ts strict, react-hooks, jsx-a11y; `react-refresh` override for `components/ui/`, KD-07); `build.sourcemap: false`; deps incl. `zustand`, `lucide-react` (ADR 0007)
 - [ ] **1.8.2** `config.ts` (runtime `window.__CONFIG__` + `VITE_*` fallback) and `index.html` loads `/config.js`
 - [ ] **1.8.3** `lib/api.ts` — `useApi` (token per request), `ApiError` from ProblemDetails
-- [ ] **1.8.4** 🎨 `tokens.css` wired into Tailwind; shared components from `components.md`; Monaco theme from tokens; light/dark
+- [ ] **1.8.4** 🎨 `tokens.css` wired into Tailwind (incl. shadcn bridge; `init`'s default palette deleted); `shadcn init` + `add` primitives, reviewed and re-skinned (FE-16); shared components from `components.md` with lucide icons; zustand `useThemeStore` + `useDraftStore` (FE-15); Monaco theme from tokens; light/dark
 - [ ] **1.8.5** `main.tsx` providers; routes `/`, `/problems/:slug`, `/sign-in/*`, `/sign-up/*`, `/me`
 - [ ] **1.8.6** Catalog page per wireframe (TanStack Query, filters)
 - [ ] **1.8.7** Editor page per wireframe — statement pane + Monaco (`csharp`) + starter code + `localStorage` drafts
 - [ ] **1.8.8** Dockerfile, `nginx.conf`, `docker/40-config.sh` (publishable key only)
 
 ### 1.9 Astro site
-- [ ] **1.9.1** Astro minimal + tailwind + sitemap + mdx, `output: 'static'`
-- [ ] **1.9.2** 🎨 Same `tokens.css`; pages per `pages.md`; all copy original
+- [ ] **1.9.1** Astro minimal + Tailwind **v4 via `@tailwindcss/vite`** (not `@astrojs/tailwind`) + sitemap + mdx, `output: 'static'`, no client framework (ADR 0007)
+- [ ] **1.9.2** 🎨 Same `tokens.css` by relative import (incl. shadcn bridge); `.astro` Button/Badge/DifficultyBadge mirror the app's variants; `lucide-static` icons; dark mode via `prefers-color-scheme`; pages per `pages.md`; all copy original
 - [ ] **1.9.3** Catalog generated from `problems/*/problem.yaml` (summaries only)
 - [ ] **1.9.4** Pages: home, problems, problem detail, how-it-works, pricing, blog + RSS, legal
-- [ ] **1.9.5** Deep links with `?entry=`; Dockerfile + nginx
+- [ ] **1.9.5** Deep links with `?entry=`; Dockerfile (additional build contexts `design` + `problems`, final image `dist/` only) + nginx
 
 ### 1.10 Compose & CI
 - [ ] **1.10.1** `--profile app` builds and serves api, web, marketing through Traefik
@@ -162,10 +162,10 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 - [ ] **1.10.3** Hosts-file entries for `*.codebench.localhost` (PowerShell 5.1 doesn't resolve them)
 
 ### 1.11 Tests
-- [ ] **1.11.1** Unit: handler + validator tests for every new slice
+- [x] **1.11.1** Unit: handler tests for all four Phase 1 slices (`GetProblems`, `GetProblem`, `GetMe`, `HandleClerkWebhook`) + validator tests for the one command
 - [x] **1.11.2** Integration: `TestJwt` (RSA-signed `iss`/`sub`/`azp`/`exp`) through the **real** JwtBearer pipeline (static OIDC config); 7 token tests (valid, trailing slash, wrong/missing azp, wrong issuer, expired, untrusted key)
-- [ ] **1.11.3** Integration: `GET /problems/{slug}` JSON has no hidden tests / reference
-- [~] **1.11.4** Integration: `GET /me` 401 anonymous, 200 signed in, 404 not provisioned, miss not cached — done; anonymous catalog 200 — pending (1.6.1)
+- [x] **1.11.3** Integration: raw JSON of `GET /problems/sum-of-evens` has no hidden test names, `$gen` args, reference body or the word "reference"; `hiddenTestCount: 2`
+- [x] **1.11.4** Integration: anonymous catalog 200 (order, enums as strings, filters, clamp, 400s); `GET /me` 401 anonymous, 200 signed in, 404 not provisioned, miss not cached
 - [ ] **1.11.5** Frontend: Vitest + MSW test for the catalog
 
 ### 1.12 🔍 REA audits
@@ -497,6 +497,8 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 | 2026-11-18 | 0 | Traefik v3.3 docker provider fails (`Error response from daemon: ""`) — requests API 1.24, Docker Engine 29 requires ≥ 1.44 | ✅ `traefik:v3.6` in compose + guide 05 |
 | 2026-11-18 | 0 | PowerShell 5.1 can't resolve `*.codebench.localhost` | Use `curl.exe -H "Host: …" http://127.0.0.1` or hosts-file entries (1.10.3) |
 | 2026-11-19 | 0 | REA rejects `--token-limit` with structured output; only lists direct assembly refs | Use `--format json --filter-output`; RA-01 also scans `deps.json` |
+| 2026-11-22 | 1 | Host-run API: `/health` nats Unhealthy (`can not connect uris`) with `nats://…@localhost:4222` | ✅ `localhost` → `::1` first, ports bound to 127.0.0.1, NATS.Net tries only the first address; user-secret uses `127.0.0.1`; guide 08 updated. `/health` all Healthy |
+| 2026-11-22 | 1 | Docker Desktop stopped mid-session → final integration run for 1.7 not done (86 tests fail at container start, not in code) | ✅ 2026-11-22 Docker restarted; full suite green 3× in a row (296 tests) |
 
 ## Decisions Log
 
@@ -534,6 +536,43 @@ Record every deviation from `build_plan.md` / the guide and why — future-you w
 | 2026-11-19 | CQRS contract method stays `Handle` (exception to NM-04) | Template/guide/skills convention; user decision — no churn |
 | 2026-11-19 | Tests: one class per use case (`{UseCase}HandlerTests` / `ValidatorTests` / `{UseCase}Tests`), skills updated | Mirrors one-file-per-slice (VS-01); skills had 3 conflicting patterns |
 | 2026-11-19 | `Contracts/Grading.cs` split into one file per record; middleware `Invoke` → `InvokeAsync` | NM-01 / NM-05; the rename exposed a real bug: `RequestContextLoggingMiddleware` dropped `CorrelationId` after the first await (now awaited inside `using`) |
+| 2026-11-20 | `Problem.CreateDraft(ProblemContent, …)` / `TestCase.Create(…, TestCaseContent)` content records | One shape for seeder (1.5), create/update (3A); avoids 15-parameter factories (Sonar S107) |
+| 2026-11-20 | `xmin` mapped as shadow property `RowVersion`; `Problem.Version` = publish counter (0 while Draft, ≥ 1 once Published — DB check) | Keeps the entity persistence-ignorant (DM-05) and the two "versions" from being confused |
+| 2026-11-20 | No `TestCase.Generator` column (guide 09 table lists one) | Guide 09's own test format keeps generators inside `args` as `{"$gen": …}`; a column would duplicate it |
+| 2026-11-20 | All enums stored as text; `Track`/`GraderKind` already list Phase 6 kinds | Readable SQL, reorder-safe; avoids a migration per grader |
+| 2026-11-20 | `Archive()` refuses Drafts (409), `Publish()` refuses Archived (409); both idempotent | Guide 09: drafts are deleted, not archived; republishing goes through a new draft (DM-08) |
+| 2026-11-20 | `ApplicationDbContext` now passes the `CancellationToken` to domain-event dispatch | VS-06; template dropped it |
+| 2026-11-20 | One permission catalog `Authorization/Permissions` (+ `RolePermissionMatrix`), not per-feature `Permissions` classes | The matrix spans every area; per-feature classes with the same name would clash; AR-07 puts permission loading in `Authorization/` (AR-08, NM-06 updated) |
+| 2026-11-20 | `RoleSeeder` syncs (adds + removes) rather than insert-only; runs in a hosted service at start-up | The matrix in code is the source of truth (renamed permissions must disappear); requests never see an empty table; two instances can't collide (`ON CONFLICT`) |
+| 2026-11-20 | Permission cache entries tagged `permissions`; seeder clears the tag on change | Per-user keys can't be enumerated; a matrix change affects everyone |
+| 2026-11-20 | First-request email comes from custom session-token claims (`email`, `email_verified`), not Clerk's Backend API | Documented Clerk mechanism; no outbound call per new user, no secret key needed in host-run dev; one-time dashboard step |
+| 2026-11-20 | Bootstrap admin needs a **verified** email (token `email_verified` true, or webhook `verification.status = verified`); only at creation | Fail closed: a missing claim or unverified address can never mint an admin; existing users are never promoted by config |
+| 2026-11-20 | `user.deleted` → soft delete (`DeletedAt`, disabled, email anonymised, row kept); `Enable()` refuses deleted users (409) | Submission/audit history stays intact; an admin can't resurrect a Clerk-deleted account |
+| 2026-11-20 | Webhook: 503 when `Clerk:WebhookSecret` is unset, 400 on bad signature/payload, 204 for unknown types | Never processes unverified data; unconfigured ≠ attack; Svix retries 4xx/5xx, so ignored types must still 2xx |
+| 2026-11-20 | YAML → JSON tree (scalar style decides type) → System.Text.Json, instead of YamlDotNet's object deserializer | YamlDotNet turns every scalar into a string (`expected: 6` → `"6"`); quoted vs plain must survive into `args_json`/`expected_json` |
+| 2026-11-20 | Scalar line breaks normalised CRLF → LF | Seed files have CRLF on Windows (259 CR bytes found); starter/reference code must not depend on the machine that seeded |
+| 2026-11-20 | Seed deferral by grader (`ProblemSeeder.ImplementedGraders = {Algorithms}`) instead of per-file flags | Problems 5–6 seed themselves once their grader exists; no YAML edits needed later |
+| 2026-11-20 | `reference` optional only for the refactoring grader (falls back to the starter) | `shipping-cost-refactor`'s starter is its behaviour reference (guide 09) |
+| 2026-11-20 | `sortOrder` added to the six seed files (10…60) | Catalog order = guide 09 numbering; YAML had none |
+| 2026-11-20 | All seed files validated before any insert; one transaction per problem | A broken file must not leave a half-seeded catalog; problem + tests are atomic |
+| 2026-11-21 | Enums serialised as camelCase strings globally (`JsonStringEnumConverter`) | `"algorithms"`, `"learner"` instead of ordinals; matches guide 09 role names and NM-08 |
+| 2026-11-21 | `GET /problems` binds `track`/`difficulty` as strings and parses case-insensitively; unknown → 400 `Problems.InvalidFilter` | Built-in enum binding is case-sensitive and rejected the API's own camelCase values |
+| 2026-11-21 | Pro (non-free) problems: listed in the catalog, opened only by `plan = pro` or `admin:access` (staff preview); others get 404 | EP-02 don't-leak-existence; staff must preview what they manage; Phase 7.3 swaps the plan check for plan-derived permissions |
+| 2026-11-21 | `problems:{slug}` caches caller-independent data; the Pro check runs per request after the cache | One cache entry per problem, never a per-user copy, and no way for a cached entry to grant access |
+| 2026-11-21 | `ProblemLimits.Default` returns a new instance; `Problem.Apply` copies limits | **Bug from 1.2:** a shared static owned-type instance made saving two default-limit problems in one context throw (would hit `--seed` and admin create) |
+| 2026-11-21 | `GlobalExceptionHandler`: `BadHttpRequestException` → its own status (400) and every error as `application/problem+json` | Unbindable query values (`?page=abc`) returned 500; responses weren't RFC 7807 media type |
+| 2026-11-21 | `check-rules.ps1` NM-07 ignores comment lines | It read `<see cref="Tag"/>` in a doc comment as a cache key; probe-tested that real bad keys still fail |
+| 2026-11-21 | `.dockerignore` line `README.md**/.env.*` split in two | A missing newline merged two patterns, so `**/.env.*` (e.g. `.env.local`) wasn't excluded from image build contexts; built image verified to contain no env files |
+| 2026-11-21 | `SeedCommand` maps every unexpected failure to exit 1 (justified CA1031 at the CLI boundary) | DB unreachable previously crashed with exit 139; scripts and Compose need the documented 0/1/2 |
+| 2026-11-20 | Base `appsettings.json` gets a Serilog Console sink | Production had **no** logging configured (only Development did): containers and `--seed` were silent. OTLP logs in Production remain Phase 4 |
+| 2026-11-20 | Signed-in work endpoints use `HasPermission(...)` instead of bare `RequireAuthorization()` | `IsDisabled` is enforced in the permission handler (guide 09); bare authorization would let disabled users submit |
+| 2026-11-23 | Astro: Tailwind v4 via `@tailwindcss/vite` (guide 04 had `@astrojs/tailwind`, v3-only); no React islands; `.astro` components mirror the app's variants; `lucide-static`; check-rules FE-11/FE-13 for `apps/marketing` (probe-tested) | v3 integration can't read `tokens.css` (`@theme`, `@custom-variant`); one design system across both sites without shipping React to the marketing site |
+| 2026-11-23 | Web + marketing Docker builds get `docs/design` (+ `problems`) as **additional build contexts** at the same relative paths; compose + guide 06 `images.yml` updated | Build contexts were `apps/<app>` while `tokens.css` and `problems/*.yaml` live outside — `docker build` would have failed; root context is blocked by `.dockerignore` (`apps`, `docs`) and would bloat the context |
+| 2026-11-22 | Frontend adds shadcn/ui + lucide-react + zustand (ADR 0007); rules FE-15/16/17, KD-07; shadcn bridge in `tokens.css`; check-rules FE-11/15/17 (probe-tested) | Accessible Radix primitives instead of hand-rolled dialogs/menus; zustand only for client UI state. No REA conflict — RA-05 additionally rejects devtools hooks in `dist/` |
+| 2026-11-22 | Register the public `RedisCache` as `IDistributedCache` instead of `AddStackExchangeRedisCache()`; health check has its own lazy connection | **Bug found by `ProblemSeederTests`:** `RedisCacheImpl` calls `GetService<HybridCache>()` on connect (client-name suffix only), and HybridCache's ctor connects to read tag state → re-entrant DI → **two HybridCache singletons** (always with `ConnectionMultiplexerFactory`, timing-dependent otherwise; reproduced in a bare `ServiceCollection`, stack-traced). Middleware (method injection) and handlers (ctor injection) got different instances, so invalidations missed → stale data up to 10 min. Pinned by `CachingTests` |
+| 2026-11-22 | Own Redis/NATS health checks instead of `AspNetCore.HealthChecks.Redis/Nats`; NATS.Net 3.4.1 | The NATS package pins NATS.Net 2.x; own checks report a missing connection string as Unhealthy instead of throwing |
+| 2026-11-22 | Redis/NATS removed from `appsettings.Development.json`; user-secrets only | Compose Redis/NATS require passwords, so the password-less dev values could never authenticate |
+| 2026-11-22 | Integration tests run real Redis + NATS (Testcontainers) | `/health` and the L2 path behave as in production; caught the double-HybridCache bug |
 | 2026-11-19 | `check-rules.ps1` XC-02 rewritten | It was vacuous: `Find` skips `#` lines and `tests/` wasn't scanned — an unjustified pragma in `BaseHandlerTest` had slipped through |
 
 ---

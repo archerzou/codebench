@@ -23,7 +23,9 @@ internal static class TestJwt
         string? authorizedParty = AuthorizedParty,
         string issuer = Issuer,
         DateTime? expiresAt = null,
-        SecurityKey? signingKey = null)
+        SecurityKey? signingKey = null,
+        string? email = null,
+        bool? emailVerified = null)
     {
         DateTime expires = expiresAt ?? DateTime.UtcNow.AddMinutes(5);
 
@@ -31,6 +33,17 @@ internal static class TestJwt
         if (authorizedParty is not null)
         {
             claims["azp"] = authorizedParty;
+        }
+
+        // Custom session-token claims (Clerk dashboard → Sessions → Customize session token).
+        if (email is not null)
+        {
+            claims["email"] = email;
+        }
+
+        if (emailVerified is not null)
+        {
+            claims["email_verified"] = emailVerified.Value;
         }
 
         var descriptor = new SecurityTokenDescriptor

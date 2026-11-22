@@ -84,8 +84,10 @@ jobs:
         include:
           - { name: api,       context: .,              file: src/Web.Api/Dockerfile }
           - { name: worker,    context: .,              file: src/Worker/Dockerfile }
-          - { name: web,       context: apps/web,       file: apps/web/Dockerfile }
-          - { name: marketing, context: apps/marketing, file: apps/marketing/Dockerfile }
+          - { name: web,       context: apps/web,       file: apps/web/Dockerfile,
+              build-contexts: "design=docs/design" }
+          - { name: marketing, context: apps/marketing, file: apps/marketing/Dockerfile,
+              build-contexts: "design=docs/design\nproblems=problems" }   # same as compose additional_contexts (guide 04)
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -106,6 +108,7 @@ jobs:
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.file }}
+          build-contexts: ${{ matrix.build-contexts }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

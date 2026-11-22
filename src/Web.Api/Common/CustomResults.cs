@@ -1,9 +1,11 @@
-﻿using Web.Api.Common;
-
 namespace Web.Api.Common;
 
+/// <summary>The one way errors become HTTP responses: RFC 7807 bodies with title = error code, detail, type, status (EP-02).</summary>
 public static class CustomResults
 {
+    /// <summary>For endpoint-level failures (binding, signature) that never reach a handler.</summary>
+    public static IResult Problem(Error error) => Problem(Result.Failure(error));
+
     public static IResult Problem(Result result)
     {
         if (result.IsSuccess)
@@ -25,6 +27,7 @@ public static class CustomResults
                 ErrorType.Problem => error.Code,
                 ErrorType.NotFound => error.Code,
                 ErrorType.Conflict => error.Code,
+                ErrorType.Unavailable => error.Code,
                 _ => "Server failure"
             };
 
@@ -35,6 +38,7 @@ public static class CustomResults
                 ErrorType.Problem => error.Description,
                 ErrorType.NotFound => error.Description,
                 ErrorType.Conflict => error.Description,
+                ErrorType.Unavailable => error.Description,
                 _ => "An unexpected error occurred"
             };
 
@@ -45,6 +49,7 @@ public static class CustomResults
                 ErrorType.Problem => "https://tools.ietf.org/html/rfc7231#section-6.5.1",
                 ErrorType.NotFound => "https://tools.ietf.org/html/rfc7231#section-6.5.4",
                 ErrorType.Conflict => "https://tools.ietf.org/html/rfc7231#section-6.5.8",
+                ErrorType.Unavailable => "https://tools.ietf.org/html/rfc7231#section-6.6.4",
                 _ => "https://tools.ietf.org/html/rfc7231#section-6.6.1"
             };
 
@@ -54,6 +59,7 @@ public static class CustomResults
                 ErrorType.Validation or ErrorType.Problem => StatusCodes.Status400BadRequest,
                 ErrorType.NotFound => StatusCodes.Status404NotFound,
                 ErrorType.Conflict => StatusCodes.Status409Conflict,
+                ErrorType.Unavailable => StatusCodes.Status503ServiceUnavailable,
                 _ => StatusCodes.Status500InternalServerError
             };
 

@@ -6,6 +6,7 @@ track: refactoring
 difficulty: easy
 grader: refactoring
 free: true
+sortOrder: 60
 tags: [refactoring, complexity]
 signature: "public decimal Cost(string zone, decimal weightKg, bool express)"
 statement: |

@@ -205,6 +205,8 @@ else { Skip 'SB-01' 'Sandbox containers fully hardened' 'no SandboxRunner yet' }
 Report 'SB-02' 'Host Docker socket never used by Worker' (Find (Get-SourceFiles $worker '*.*') 'docker\.sock')
 
 $webSrc = Join-Path $root 'apps\web\src'
+$marketingDir = Join-Path $root 'apps\marketing'
+$rawPalette = '\b(bg|text|border|ring|fill|stroke|from|to|via)-(white|black|(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3})\b'
 $secretPattern = 'sk_(test|live)_[A-Za-z0-9]{8,}|whsec_[A-Za-z0-9]{8,}|pdl_ntfset_|ghp_[A-Za-z0-9]{20,}|github_pat_'
 Report 'SC-01' 'No secret values in source' (Find (@($srcFiles) + @(Get-SourceFiles $webSrc '*.ts*') + @(Get-SourceFiles (Join-Path $root 'deploy') '*.yml')) $secretPattern)
 
@@ -216,8 +218,24 @@ if (Test-Path $webSrc) {
     Report 'FE-04' 'fetch only in lib/api.ts' (Find ($ts | Where-Object { $_.FullName -notmatch '\\lib\\api\.ts$' }) '\bfetch\(')
     Report 'FE-05' 'import.meta.env only in config.ts' (Find ($ts | Where-Object { $_.Name -ne 'config.ts' }) 'import\.meta\.env')
     Report 'FE-06' 'No secret-looking config names in the web app' (Find $ts '(SECRET|PASSWORD|API_KEY)\b')
+    # Raw palette colours bypass the tokens (incl. shadcn's text-white on destructive). Roles only.
+    Report 'FE-11' 'Colour roles only (no raw Tailwind palette classes)' (Find $ts $rawPalette -CaseSensitive)
+    $stores = @($ts | Where-Object { $_.FullName -match '\\stores\\' })
+    Report 'FE-15' 'zustand stores hold no tokens or auth' (Find $stores 'getToken|\btoken\b|Authorization|useAuth')
+    Report 'FE-15' 'zustand devtools only behind config.isDev' (Find ($ts | Where-Object { (Get-Content $_.FullName -Raw) -notmatch 'isDev' }) '\bdevtools\(')
+    Report 'FE-17' 'lucide-react named imports only' (Find $ts "import\s+\*\s+as\s+\w+\s+from\s+['""]lucide-react['""]|from\s+['""]lucide-react/dynamic['""]|\bDynamicIcon\b")
 }
 else { Skip 'FE-*' 'Frontend rules' 'apps/web not scaffolded yet' }
+
+if (Test-Path (Join-Path $marketingDir 'src')) {
+    $site = @('*.astro', '*.ts', '*.mjs', '*.mdx', '*.css') | ForEach-Object { Get-SourceFiles (Join-Path $marketingDir 'src') $_ }
+    $site = @($site | Where-Object { $_.FullName -notmatch '\\content\\problems\\' })   # generated summaries
+    $siteConfig = @(Get-SourceFiles $marketingDir 'astro.config.*' | Where-Object { $_.DirectoryName -eq $marketingDir })
+    Report 'FE-11' 'Marketing: colour roles only (no raw Tailwind palette classes)' (Find $site $rawPalette -CaseSensitive)
+    Report 'FE-13' 'Marketing: no client framework (React, shadcn/ui, zustand, lucide-react)' (Find $site "from\s+['""](react|react-dom|@astrojs/react|zustand|lucide-react|@radix-ui/[^'""]+)['""]|client:(load|idle|visible|only|media)")
+    Report 'FE-13' 'Marketing: Tailwind v4 via @tailwindcss/vite, not @astrojs/tailwind' (Find (@($site) + @($siteConfig)) '@astrojs/tailwind')
+}
+else { Skip 'FE-13' 'Marketing site rules' 'apps/marketing not scaffolded yet' }
 
 Write-Host "`n== Naming" -ForegroundColor White
 # NOTE: PowerShell's -match/-eq/-ne are case-INSENSITIVE. Naming checks must use -cmatch/-cnotmatch/-ceq/-cne.
@@ -290,7 +308,10 @@ foreach ($f in ($srcFiles | Where-Object { $_.Name -like '*Errors.cs' })) {
     }
 }
 foreach ($f in ($srcFiles | Where-Object { $_.Name -like '*CacheKeys.cs' })) {
-    foreach ($m in [regex]::Matches((Get-Content $f.FullName -Raw), '\$?"([^"]*)"')) {
+    # Code only: comment lines (incl. /// <see cref="Tag"/>) are not cache keys.
+    $code = (Get-Content $f.FullName | Where-Object { $_ -notmatch '^\s*//' }) -join "
+"
+    foreach ($m in [regex]::Matches($code, '\$?"([^"]*)"')) {
         $key = $m.Groups[1].Value -creplace '\{[^}]*\}', ''
         if ($key -cnotmatch '^[a-z][a-z0-9-]*(:[a-z0-9-]*)*$') { $nm07 += "$($f.Name)  cache key '$($m.Groups[1].Value)'" }
     }

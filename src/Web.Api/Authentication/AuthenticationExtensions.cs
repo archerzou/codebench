@@ -58,8 +58,12 @@ internal static class AuthenticationExtensions
                 };
             });
 
+        services.AddOptions<AdminOptions>().Bind(configuration.GetSection(AdminOptions.SectionName));
+
         services.AddHttpContextAccessor();
         services.AddScoped<IUserContext, UserContext>();
+        services.AddScoped<UserProvisioner>();
+        services.AddSingleton<ClerkWebhookVerifier>();
 
         return services;
     }

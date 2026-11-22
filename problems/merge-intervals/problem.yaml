@@ -4,6 +4,7 @@ track: algorithms
 difficulty: medium
 grader: algorithms
 free: true
+sortOrder: 30
 tags: [sorting, intervals]
 signature: "public int[][] Merge(int[][] windows)"
 statement: |

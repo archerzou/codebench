@@ -5,6 +5,7 @@ track: database
 difficulty: medium
 grader: database
 free: false
+sortOrder: 50
 tags: [ef-core, indexes]
 signature: "public Task<List<string>> GetNames(ShopDb db, DateTime since)"
 statement: |

@@ -25,7 +25,11 @@ Guide 04 "Marketing site"; rule FE-13 in `context/code_rules.md`.
      pubDate, tags); it appears in `/blog`, the RSS feed and the sitemap automatically.
 2. **Reuse** the base layout and shared components (`src/layouts/`, `src/components/`); set `<title>` and
    meta description per page.
-3. **Style** with Tailwind; semantic headings in order, alt text on images, sufficient contrast.
+3. **Style** with Tailwind v4 and the shared tokens — colour **roles** only (`bg-surface`, `text-ink-muted`,
+   `bg-primary`), never raw palette classes; reuse the `.astro` Button/Badge/DifficultyBadge (classes mirror
+   the app's variants, `docs/design/components.md`). Icons: inline SVG from `lucide-static`
+   (`?raw` + `set:html`, `aria-hidden="true"` beside visible text). No React islands, no client framework
+   (ADR 0007). Semantic headings in order, alt text on images; copy follows `docs/design/brief.md` voice.
 4. **Verify**
    ```powershell
    npm --prefix apps/marketing run build      # must succeed; check dist/ for the new route

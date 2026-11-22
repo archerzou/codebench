@@ -4,6 +4,7 @@ track: algorithms
 difficulty: easy
 grader: algorithms
 free: true
+sortOrder: 10
 tags: [arrays, allocations]
 signature: "public long SumOfEvens(int[] nums)"
 statement: |

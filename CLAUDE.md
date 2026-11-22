@@ -15,7 +15,7 @@ calling work done.
 
 ```text
 apps/marketing        Astro static site (codebench.localhost)
-apps/web              React + Vite + TS app incl. /admin (app.codebench.localhost)
+apps/web              React + Vite + TS app incl. /admin (app.codebench.localhost) — Tailwind v4, shadcn/ui, lucide-react, zod, TanStack Query, zustand (ADR 0007)
 src/Web.Api           .NET 10 API — vertical slices (namespace Web.Api)
 src/Contracts         NATS message records shared by API + Worker (CodeBench.Contracts) — BCL only
 src/Worker            grading orchestrator (CodeBench.Worker) — NATS + sandbox daemon only, NO database

@@ -10,7 +10,7 @@ says where each feature is specified. Phases follow [guide/07-roadmap.md](guide/
 | Sign-in | guide 02 §2, ADR 0001 | Clerk dev instance (email + GitHub); API validates Clerk JWT incl. `azp` | 1 |
 | Problem catalog | guide 02 §5, 04 | `GET /problems` with track/difficulty/search, paged + cached; Astro SEO pages | 1 |
 | Editor | guide 04 | Monaco, statement pane, budgets shown up front, drafts in `localStorage` | 1 |
-| Seed problems | guide 09 | 6 original problems from `problems/*.yaml`; DB is source of truth after seeding | 1 |
+| Seed problems | guide 09, ADR 0005 | 6 original problems in `problems/*.yaml`, loaded insert-only by `--seed`; the 4 algorithms problems now, `customers-since` / `shipping-cost-refactor` automatically once their graders exist; DB is source of truth after seeding | 1 (5, 6) |
 | Roles + bootstrap admin | guide 09 | learner / author / admin in our DB; `Admin:BootstrapEmails` | 1 |
 | Try before signup | guide 02 §5 | Anonymous Run on free problems, rate-limited per IP | 2 |
 | Run / Submit | guide 02 §5–7, ADR 0003 | `POST /runs` (visible tests) and `POST /submissions` (all tests) → 202, outbox → NATS | 2 |

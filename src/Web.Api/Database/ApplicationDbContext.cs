@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Web.Api.Common;
+using Web.Api.Features.Problems;
 using Web.Api.Features.Users;
 
 namespace Web.Api.Database;
@@ -10,6 +11,12 @@ public sealed class ApplicationDbContext(
     : DbContext(options)
 {
     public DbSet<User> Users { get; set; }
+
+    public DbSet<RolePermission> RolePermissions { get; set; }
+
+    public DbSet<Problem> Problems { get; set; }
+
+    public DbSet<TestCase> TestCases { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -33,14 +40,14 @@ public sealed class ApplicationDbContext(
         List<IDomainEvent> domainEvents = ExtractDomainEvents();
         int result = await base.SaveChangesAsync(cancellationToken);
 
-        await PublishDomainEventsAsync(domainEvents);
+        await PublishDomainEventsAsync(domainEvents, cancellationToken);
 
         return result;
     }
 
-    private async Task PublishDomainEventsAsync(IEnumerable<IDomainEvent> domainEvents)
+    private async Task PublishDomainEventsAsync(IEnumerable<IDomainEvent> domainEvents, CancellationToken cancellationToken)
     {
-        await domainEventsDispatcher.DispatchAsync(domainEvents);
+        await domainEventsDispatcher.DispatchAsync(domainEvents, cancellationToken);
     }
 
     private List<IDomainEvent> ExtractDomainEvents()

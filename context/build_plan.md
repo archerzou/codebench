@@ -23,7 +23,7 @@ so every piece is understood rather than pasted. It is the **executable index** 
 | Queue | NATS JetStream (work queues `JOBS`, `RESULTS`; object store `problem-bundles`) + transactional outbox |
 | Code execution | Worker (no DB) → Docker-in-Docker `sandbox-daemon` → one no-network container per run; Roslyn harness |
 | Auth | Clerk (dev instance) JWT validation + `azp`; roles/permissions in our DB |
-| Frontend | React 19 + Vite + TS, Clerk, TanStack Query, Monaco, Tailwind v4, zod; Astro static site |
+| Frontend | React 19 + Vite + TS (strict), Clerk, TanStack Query (server state), zustand (client UI state only), Monaco, Tailwind v4, shadcn/ui (Radix primitives, themed by our tokens), lucide-react icons, zod; Astro static site |
 | Design | Own design system: `docs/design/` brief + tokens → Tailwind v4 `@theme`, shared by app and site |
 | Edge | Traefik **v3.6** on `*.codebench.localhost`; Docker networks `edge` / `backend` / `exec` / `egress` |
 | Observability | Serilog + OpenTelemetry → `grafana/otel-lgtm` (Grafana, Loki, Tempo, Prometheus) |
@@ -199,7 +199,11 @@ HybridCache under `users:ext:{sub}` (misses are not cached). ✅ done 2026-11-19
 at startup *[SC-06]*. **Why azp:** Clerk tokens have no audience; `azp` is what stops a token minted for
 another site being accepted *[SC-02]*. Add `Svix` to `Directory.Packages.props` *[XC-01]*.
 
-### 1.2 Entities: `User`, `Problem`, `TestCase`, roles  ·  guide 02 §3, 09 "Data model additions"
+### 1.2 Entities: `User`, `Problem`, `TestCase`, roles  ·  guide 02 §3, 09 "Data model additions"  ✅ done 2026-11-20
+
+Built as `Problem.CreateDraft(ProblemContent, now)` + `TestCase.Create(problemId, order, TestCaseContent)`;
+`xmin` is the shadow property `ProblemConfiguration.RowVersion`; enums stored as text. Schema behaviour
+(jsonb, `text[]`, checks, cascade, concurrency) is covered by `tests/IntegrationTests/Database/EntityPersistenceTests.cs`.
 
 Use `/add-entity` for each. All ids `Guid`, FK ids only, no navigations *[DM-03]*.
 
@@ -222,11 +226,36 @@ Then `/add-migration Phase1_Problems_Users`.
 | `author` | learner + `admin:access`, `problems:write`, `tests:write` |
 | `admin` | author + `problems:publish`, `problems:delete`, `users:manage`, `submissions:read-all`, `stats:read` |
 
+✅ done 2026-11-20: `Authorization/Permissions` (catalog) + `RolePermissionMatrix` (grants);
+`Database/Seeding/RoleSeeder` syncs the table (adds missing, removes stale, `ON CONFLICT DO NOTHING`)
+via `RoleSeederHostedService` before requests are served, and clears the `permissions` cache tag when
+it changes anything. **Consequence:** `IsDisabled` is enforced by the permission handler only, so
+endpoints for signed-in work use `.HasPermission(...)`, not bare `.RequireAuthorization()` (see 2.2).
+
 `RoleSeeder` (idempotent, runs every start) writes the matrix. `PermissionProvider` loads permissions by
 `ExternalId`, cached 5 min (`permissions:{externalId}`), and returns none for `IsDisabled` users.
 Permission names are constants *[AR-08]*. Clerk's role claim is never trusted *[SC-03]*.
 
-### 1.4 User sync  ·  guide 02 §2
+### 1.4 User sync  ·  guide 02 §2  ✅ code done 2026-11-20 — 1.4.3 needs the two dashboard steps below
+
+**Clerk dashboard setup (one-time, you):**
+1. **Session token claims** — Dashboard → *Sessions* → *Customize session token* → Claims:
+   ```json
+   { "email": "{{user.primary_email_address}}", "email_verified": "{{user.email_verified}}" }
+   ```
+   Without `email` the first request can't create the local user (`/me` → 404 `Users.NotProvisioned`, a warning is
+   logged). Without `email_verified: true` nobody is bootstrapped to admin (fail closed). Claims refresh within ~60 s.
+2. **Webhook** — `cloudflared tunnel --url http://localhost:5000` (host-run API) or `http://localhost:80`
+   (Traefik; set the Host header rule accordingly), add endpoint `https://<tunnel>/webhooks/clerk` in
+   Dashboard → *Webhooks*, subscribe `user.created`, `user.updated`, `user.deleted`, copy the signing secret into
+   `deploy/.env` → `CLERK_WEBHOOK_SECRET` and for host-run dev
+   `dotnet user-secrets set "Clerk:WebhookSecret" "whsec_…" --project src/Web.Api`. Use *Testing → Send example*
+   to check: 204 = applied, 400 = bad signature/payload, 503 = secret not set.
+
+Built: `Authentication/UserProvisioner` (shared by the middleware and the webhook; unique-index race →
+existing row wins), `UserResolutionMiddleware` provisions on a miss, `Users/HandleClerkWebhook`
+(`ClerkWebhookVerifier` checks Svix before parsing; handler upserts / updates email / soft-deletes via
+`User.MarkDeleted`, drops `users:ext:*` + `permissions:*`), migration `Phase1_User_Deletion`.
 
 - **Upsert on first authenticated request** (middleware in `Authentication/`): no row for `sub` →
   create `learner`; email ∈ `Admin:BootstrapEmails` → `admin`.
@@ -235,7 +264,13 @@ Permission names are constants *[AR-08]*. Clerk's role claim is never trusted *[
   `.AllowAnonymous().ExcludeFromDescription()` *[EP-04]*. Locally, rely on the upsert; test the webhook
   with a Cloudflare quick tunnel or the dashboard's test events, then set `CLERK_WEBHOOK_SECRET`.
 
-### 1.5 Seeding problems from `problems/`  ·  guide 09 "The seeder", "The six seed problems"
+### 1.5 Seeding problems from `problems/`  ·  guide 09 "The seeder", "The six seed problems"  ✅ done 2026-11-20
+
+Run it: `dotnet run --project src/Web.Api -- --seed` (host) or `docker compose … run --rm api --seed` (container,
+`/problems` mount). Exit 0 ok / 1 failed / 2 refused. Built as `Database/Seeding/`: `YamlToJsonConverter` →
+`ProblemDefinitionReader` (+ `ProblemDefinitionValidator`) → `ProblemSeeder` (insert-only, validate-all-first,
+grader-deferred) → `SeedCommand`. When the database (Phase 5) or refactoring (Phase 6) grader lands, add it to
+`ProblemSeeder.ImplementedGraders` and re-run `--seed`.
 
 `problems/<slug>/problem.yaml` is **seed data only** (ADR 0005). Add `YamlDotNet`.
 
@@ -257,7 +292,11 @@ foreach (string file in Directory.EnumerateFiles(folder, "problem.yaml", SearchO
 `../../problems` (host) and exits; `--seed-demo` only in Development *[SC-05]*. Phase 1 seeds problems
 **1–4**; 5–6 wait for their graders (Phases 5–6).
 
-### 1.6 Slices  ·  guide 02 §5, `docs/api-contract.md`
+### 1.6 Slices  ·  guide 02 §5, `docs/api-contract.md`  ✅ done 2026-11-21
+
+Built: `Problems/GetProblems`, `Problems/GetProblem` (Pro = `plan pro` or `admin:access`, else 404, checked after
+the caller-independent cache), `Users/GetMe` (+ role, plan). Enums are camelCase strings on the wire. Exact
+shapes: `docs/api-contract.md`.
 
 | Slice | Route | Auth | Notes |
 |---|---|---|---|
@@ -281,26 +320,50 @@ Each via `/add-feature`; `ProblemCacheKeys` holds the keys; seeding invalidates 
 ```powershell
 Move-Item apps/web/README.md docs/web-notes.md   # Vite needs an empty folder
 cd apps; npm create vite@latest web -- --template react-ts; cd web
-npm i @clerk/clerk-react react-router-dom @tanstack/react-query @monaco-editor/react zod
-npm i -D tailwindcss @tailwindcss/vite vitest @testing-library/react @testing-library/jest-dom jsdom msw eslint-plugin-jsx-a11y
+npm i @clerk/clerk-react react-router-dom @tanstack/react-query @monaco-editor/react zod zustand lucide-react
+npm i -D tailwindcss @tailwindcss/vite @types/node vitest @testing-library/react @testing-library/jest-dom jsdom msw eslint-plugin-jsx-a11y
+# shadcn/ui (Tailwind v4 mode): needs the "@/*" → "./src/*" alias in tsconfig.json, tsconfig.app.json and vite.config.ts first
+npx shadcn@latest init            # style new-york, base colour neutral (overridden by our tokens), CSS file src/index.css
+npx shadcn@latest add button badge tabs tooltip dialog dropdown-menu input label select separator skeleton sonner
 ```
 
+shadcn/ui is **copied source**, not a dependency: `init` adds `components.json`, `src/lib/utils.ts` (`cn()`),
+`class-variance-authority`, `clsx`, `tailwind-merge`, `tw-animate-css` and the Radix packages each component
+needs. Review every generated file before committing it (it becomes our code) *[FE-16]*. Then:
+
+1. Replace the neutral palette `init` writes into `src/index.css` with `@import "./design/tokens.css"`
+   (copied from `docs/design/`); the **shadcn bridge** in `tokens.css` maps `--primary`, `--muted-foreground`,
+   `--ring`, … onto our colour roles, so shadcn components render in CodeBench's design with the measured
+   contrast ratios. Never keep shadcn's default theme *[FE-16, ADR 0006]*.
+2. Re-skin the generated variants to `docs/design/components.md` (e.g. Button `primary | secondary | ghost |
+   danger`; `danger` = `bg-fail text-surface`, not shadcn's `text-white`, which fails contrast in dark mode).
+3. Icons only from `lucide-react`, named imports *[FE-17]*; client UI state (theme, editor layout,
+   per-problem drafts) in `src/stores/` with zustand — never API data, never tokens *[FE-15]*.
+
 Build in this order: `config.ts` (runtime `window.__CONFIG__` + `VITE_*` fallback) → `lib/api.ts`
-(`useApi`, `ApiError`) → **design tokens + shared components from `docs/design/components.md`** →
+(`useApi`, `ApiError`) → **design tokens + shadcn init/re-skin + shared components from `docs/design/components.md`** →
 `main.tsx` (ClerkProvider, QueryClientProvider, RouterProvider) → routes `/`, `/problems/:slug`,
 `/sign-in/*`, `/sign-up/*`, `/me` → `features/problems` (catalog per wireframe) → `features/editor`
 (statement pane, Monaco `csharp` with the CodeBench theme and starter code, drafts in `localStorage`).
 `tsconfig` strict *[FE-01]*; ESLint per *[FE-12]*; `build.sourcemap: false` *[FE-14]*. Dockerfile +
-`nginx.conf` + `docker/40-config.sh` as guide 04 (publishable key only *[FE-05]*).
+`nginx.conf` + `docker/40-config.sh` as guide 04 (publishable key only *[FE-05]*); `src/index.css` imports
+`../../../docs/design/tokens.css`, which the Dockerfile gets from the `design` additional build context.
 
 ### 1.9 Astro site  ·  guide 04 "Marketing site", `docs/design/`
 
 ```powershell
 cd apps; npm create astro@latest marketing -- --template minimal --typescript strict
-cd marketing; npx astro add tailwind sitemap mdx
+cd marketing; npx astro add tailwind sitemap mdx     # Astro ≥ 5.2 → Tailwind v4 via @tailwindcss/vite
+npm i -D lucide-static yaml
 ```
 
-`output: 'static'`, same `tokens.css`. `scripts/gen-problems.mjs` (run in `prebuild`) turns
+`output: 'static'`, **no client framework** (no React islands — shadcn/ui, zustand, lucide-react stay in
+`apps/web`, ADR 0007). Tailwind v4 as a Vite plugin, never `@astrojs/tailwind` (v3-only, can't read
+`tokens.css`). `src/styles/global.css` imports the **same** `docs/design/tokens.css` by relative path (incl. the
+shadcn bridge, so class names match the app); `.astro` Button/Badge/DifficultyBadge mirror the app's `cva`
+variants per `components.md`; icons inlined from `lucide-static`; dark mode from `prefers-color-scheme` (inline
+script, no toggle). Dockerfile uses additional build contexts `design` + `problems` (guide 04) — compose and
+`images.yml` pass them. `scripts/gen-problems.mjs` (run in `prebuild`/`predev`) turns
 `../../problems/*/problem.yaml` into `src/content/problems/*.md` — **summaries only** *[FE-13]*. Pages per
 `docs/design/pages.md`: `/`, `/problems`, `/problems/[slug]`, `/how-it-works`, `/pricing`, `/blog/[slug]`
 (+ RSS), `/legal/*`. All copy written by you. Deep links carry `?entry=`.
@@ -322,7 +385,7 @@ Unit: handler + validator tests for every new slice. Integration: **test JWT sch
 | Check | Target | Command | Passes when |
 |---|---|---|---|
 | RA-04 | `Web.Api.dll`, `CodeBench.Worker.dll` | `inspect-managed-members` (ldstr literals) | no `sk_`, `whsec_`, `Password=`, `pk_live_` or connection-string literals |
-| RA-05 | `apps/web/dist` | `analyze-javascript-application` | no `*.map`; no `sk_`/`whsec_`/`SECRET`/`PASSWORD` literals; no hard-coded `pk_` (comes from `config.js`); route list matches `routes.tsx` |
+| RA-05 | `apps/web/dist` | `analyze-javascript-application` | no `*.map`; no `sk_`/`whsec_`/`SECRET`/`PASSWORD` literals; no hard-coded `pk_` (comes from `config.js`); route list matches `routes.tsx`; no `__REDUX_DEVTOOLS_EXTENSION__` (zustand `devtools` is dev-only, FE-15) |
 | RA-06 | `apps/marketing/dist` | `analyze-javascript-application` + text scan | no hidden-test args/expected values or reference-solution bodies from `problems/*.yaml` |
 | RA-07 | own app at `app.codebench.localhost` | `capture-browser-scenario` (open catalog → open problem) | no captured response contains `referenceSolution`, `isHidden: true` tests, or hidden args |
 | RA-09 | home, catalog, editor | `capture-web-screenshot` | baseline PNG evidence saved to `artifacts/rea/visual/` |
@@ -356,8 +419,8 @@ the hostile suite passes; REA proves the Worker and Runner boundaries on the pub
 | Slice | Route | Auth | Rules |
 |---|---|---|---|
 | `Submissions/CreateRun` | `POST /runs` | `AllowAnonymous` for free problems; signed in otherwise | visible tests only, subject `jobs.runs.created`, `anonymous-runs` limit (5/min/IP) |
-| `Submissions/CreateSubmission` | `POST /submissions` | `RequireAuthorization` | all tests, subject `jobs.submissions.created`, ≤ 2 in flight → `Submissions.TooManyInFlight`, `submissions` limit (10/min/user) |
-| `Submissions/GetSubmission` | `GET /submissions/{id}` | owner (anonymous run: unguessable id) | hidden results redacted *[QY-04, EP-07]* |
+| `Submissions/CreateSubmission` | `POST /submissions` | `HasPermission(Permissions.SubmissionsCreate)` (blocks disabled users, 1.3) | all tests, subject `jobs.submissions.created`, ≤ 2 in flight → `Submissions.TooManyInFlight`, `submissions` limit (10/min/user) |
+| `Submissions/GetSubmission` | `GET /submissions/{id}` | owner via `HasPermission(SubmissionsReadOwn)`; anonymous run: unguessable id | hidden results redacted *[QY-04, EP-07]* |
 | `Submissions/GetMySubmissions` | `GET /me/submissions` | signed in | `PagedList` |
 
 Both creates: validator (`ProblemId` not empty, `Code` ≤ 64 000), problem must be Published, write
@@ -689,7 +752,7 @@ Own artefacts only. Each check writes `artifacts/rea/<id>-<target>.json` and pri
 | RA-02 | 🔴 | Contracts DLL | `inspect-managed-artifact` | AR-03: refs ⊆ `System.*` | 0.4 |
 | RA-03 | 🔴 | Sandbox.Runner DLL (per image) | `inspect-managed-artifact` | AR-04: refs ⊆ allow-list per grader | 0.4 · 2.13 · 5.6 · 6.x |
 | RA-04 | 🔴 | API + Worker DLLs | `inspect-managed-members` (ldstr) | SC-01: no secret-shaped literals | 1.12 |
-| RA-05 | 🔴 | `apps/web/dist` | `analyze-javascript-application` | FE-05/FE-14/FE-08: no secrets, no source maps, admin only in lazy chunks | 1.12 · 3A.10 · 7.4 |
+| RA-05 | 🔴 | `apps/web/dist` | `analyze-javascript-application` | FE-05/FE-14/FE-08/FE-15: no secrets, no source maps, no devtools hooks, admin only in lazy chunks | 1.12 · 3A.10 · 7.4 |
 | RA-06 | 🔴 | `apps/marketing/dist` | `analyze-javascript-application` + text scan | FE-13 / QY-04: summaries only | 1.12 |
 | RA-07 | 🔴 | own running app | `capture-browser-scenario` (or HAR → `inspect-web-network-capture` with `--sensitive-value` for tokens) | QY-04 / EP-07 over real HTTP | 1.12 · 2.13 · 3A.10 |
 | RA-08 | 🔵 | all of the above vs baseline | `compare-managed-members`, `compare-application-versions` | drift is reviewed, not accidental | 3.7 |

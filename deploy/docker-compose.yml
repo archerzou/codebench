@@ -41,6 +41,9 @@ services:
     image: ghcr.io/${GHCR_OWNER}/codebench-marketing:${TAG:-latest}
     build:
       context: ../apps/marketing
+      # tokens.css and problems/*.yaml live outside the app; mounted at the same relative paths (guide 04).
+      # problems/ is build-stage only - dist/ gets summaries (FE-13, RA-06).
+      additional_contexts: { design: ../docs/design, problems: ../problems }
       args:
         SITE_URL: ${MARKETING_URL}
         APP_URL: ${APP_URL}
@@ -53,7 +56,7 @@ services:
   web:
     profiles: [app]
     image: ghcr.io/${GHCR_OWNER}/codebench-web:${TAG:-latest}
-    build: { context: ../apps/web }
+    build: { context: ../apps/web, additional_contexts: { design: ../docs/design } }   # tokens.css (guide 04)
     environment:
       API_URL: ${API_URL}
       CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}

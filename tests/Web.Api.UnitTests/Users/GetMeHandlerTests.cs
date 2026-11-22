@@ -28,11 +28,12 @@ public sealed class GetMeHandlerTests : BaseHandlerTest
     {
         // Arrange
         using ApplicationDbContext db = CreateDbContext();
-        var user = User.Create("user_abc", "ada@example.com", new DateTime(2026, 11, 19, 0, 0, 0, DateTimeKind.Utc));
+        var user = User.Create("user_abc", "ada@example.com", Role.Learner, new DateTime(2026, 11, 19, 0, 0, 0, DateTimeKind.Utc));
         db.Users.Add(user);
+        db.RolePermissions.AddRange(RolePermissionMatrix.Rows.Select(row => RolePermission.Create(row.Role, row.Permission)));
         await db.SaveChangesAsync();
 
-        var handler = new GetMe.Handler(db, SignedInAs("user_abc", user.Id), new PermissionProvider());
+        var handler = new GetMe.Handler(db, SignedInAs("user_abc", user.Id), new PermissionProvider(db, CreateCache()));
 
         // Act
         Result<GetMe.Response> result = await handler.Handle(new GetMe.Query(), CancellationToken.None);
@@ -41,7 +42,9 @@ public sealed class GetMeHandlerTests : BaseHandlerTest
         result.IsSuccess.ShouldBeTrue();
         result.Value.Id.ShouldBe(user.Id);
         result.Value.Email.ShouldBe("ada@example.com");
-        result.Value.Permissions.ShouldBeEmpty();
+        result.Value.Role.ShouldBe(Role.Learner);
+        result.Value.Plan.ShouldBe(Plan.Free);
+        result.Value.Permissions.ShouldBe(["problems:read", "submissions:create", "submissions:read-own"]);
     }
 
     [Fact]
@@ -49,7 +52,7 @@ public sealed class GetMeHandlerTests : BaseHandlerTest
     {
         // Arrange
         using ApplicationDbContext db = CreateDbContext();
-        var handler = new GetMe.Handler(db, SignedInAs("user_new", userId: null), new PermissionProvider());
+        var handler = new GetMe.Handler(db, SignedInAs("user_new", userId: null), new PermissionProvider(db, CreateCache()));
 
         // Act
         Result<GetMe.Response> result = await handler.Handle(new GetMe.Query(), CancellationToken.None);
@@ -65,7 +68,7 @@ public sealed class GetMeHandlerTests : BaseHandlerTest
         // Arrange
         using ApplicationDbContext db = CreateDbContext();
         var missingId = Guid.NewGuid();
-        var handler = new GetMe.Handler(db, SignedInAs("user_gone", missingId), new PermissionProvider());
+        var handler = new GetMe.Handler(db, SignedInAs("user_gone", missingId), new PermissionProvider(db, CreateCache()));
 
         // Act
         Result<GetMe.Response> result = await handler.Handle(new GetMe.Query(), CancellationToken.None);

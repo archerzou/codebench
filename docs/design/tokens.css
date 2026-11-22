@@ -4,7 +4,11 @@
  *
  * Usage in an app's main stylesheet:
  *   @import "tailwindcss";
- *   @import "./design/tokens.css";      (copied from docs/design at build time)
+ *   @import "tw-animate-css";                        (apps/web only — shadcn/ui animations)
+ *   @import "../../../docs/design/tokens.css";       (apps/web/src/index.css)
+ *   @import "../../../../docs/design/tokens.css";    (apps/marketing/src/styles/global.css)
+ * One file, never copied. Docker builds mount docs/design at the same relative path (additional build context).
+ * Both apps use Tailwind v4 through @tailwindcss/vite (Astro: not @astrojs/tailwind, which is v3-only).
  * Then: bg-surface, text-ink, text-ink-muted, bg-accent, text-on-accent, text-pass, border-line-strong,
  *       font-mono, rounded-md, ...
  *
@@ -95,6 +99,44 @@
   --color-fail-soft: var(--cb-fail-soft);
   --color-warn: var(--cb-warn);
   --color-warn-soft: var(--cb-warn-soft);
+
+  /*
+   * shadcn/ui bridge (FE-16). shadcn components use these role names; each maps onto a CodeBench role,
+   * so generated components render in our design and inherit the contrast ratios measured above.
+   * When `npx shadcn init` writes its own :root/.dark palette and @theme block into src/index.css,
+   * delete them and import this file instead.
+   *
+   *   shadcn role            -> CodeBench role         pair contrast (light / dark)
+   *   background/foreground  -> surface / ink           17.93 / 15.16
+   *   card, popover          -> surface-raised / ink    17.93 / 13.72
+   *   primary                -> accent / on-accent       6.67 /  7.53
+   *   secondary, muted       -> surface-sunken / ink     16.29 / 15.90 (muted-foreground = ink-muted 6.21 / 7.62)
+   *   destructive            -> fail (text: surface)     6.54 /  7.71  - never shadcn's text-white
+   *   border / input         -> line / line-strong       decorative / >= 3:1 control borders
+   *   ring                   -> accent                   focus ring, same as :focus-visible
+   *
+   * Name clash: shadcn's `accent` is a *subtle hover* surface (menu items, ghost buttons); ours is the teal
+   * reserved for primary actions. `bg-accent` therefore stays teal. When adding a shadcn component,
+   * replace its `bg-accent text-accent-foreground` hover/focus classes with `bg-surface-sunken text-ink`.
+   * `accent-foreground` is defined (on-accent) only so an un-reskinned class stays readable.
+   */
+  --color-background: var(--cb-surface);
+  --color-foreground: var(--cb-ink);
+  --color-card: var(--cb-surface-raised);
+  --color-card-foreground: var(--cb-ink);
+  --color-popover: var(--cb-surface-raised);
+  --color-popover-foreground: var(--cb-ink);
+  --color-primary: var(--cb-accent);
+  --color-primary-foreground: var(--cb-on-accent);
+  --color-secondary: var(--cb-surface-sunken);
+  --color-secondary-foreground: var(--cb-ink);
+  --color-muted: var(--cb-surface-sunken);
+  --color-muted-foreground: var(--cb-ink-muted);
+  --color-accent-foreground: var(--cb-on-accent);
+  --color-destructive: var(--cb-fail);
+  --color-border: var(--cb-line);
+  --color-input: var(--cb-line-strong);
+  --color-ring: var(--cb-accent);
 }
 
 @theme {
@@ -113,10 +155,11 @@
 
   /* Spacing: Tailwind's default 0.25rem step is kept (--spacing). */
 
-  /* Shape */
+  /* Shape (shadcn's generated `--radius-* : calc(var(--radius) ± …)` block is replaced by these) */
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 10px;
+  --radius: 6px;
 
   /* Elevation — floating layers only */
   --shadow-float: 0 8px 24px -8px rgb(0 0 0 / 0.25), 0 2px 6px -2px rgb(0 0 0 / 0.12);

@@ -4,6 +4,7 @@ track: algorithms
 difficulty: medium
 grader: algorithms
 free: false
+sortOrder: 40
 tags: [hashing, sorting]
 signature: "public IList<string> TopK(string[] words, int k)"
 statement: |

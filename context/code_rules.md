@@ -164,7 +164,7 @@ They communicate only through NATS and the records in `src/Contracts`.
 | NATS subjects | `CodeBench.Contracts.Subjects` |
 | Verdicts | `CodeBench.Contracts.Verdicts` |
 | OpenAPI tags | `Web.Api.Common.Endpoints.Tags` |
-| Permission names | `Permissions` (per feature, `"area:action"`) |
+| Permission names | `Web.Api.Authorization.Permissions` (one catalog, `"area:action"`); grants in `RolePermissionMatrix` |
 | Rate-limit policies | `Web.Api.Common.RateLimitingPolicies` |
 | Cache keys | `{Feature}CacheKeys` |
 
@@ -391,7 +391,7 @@ Admin routes (`/admin/*`) are the only exception.
 |---|---|---|
 | `problems:list:{hash}` / `problems:{slug}` (10 min) | Problems | seeding, Publish, Archive, Update |
 | `users:ext:{sub}` | Users | webhook update/delete, role change |
-| `permissions:{externalId}` (5 min) | Authorization | `ChangeUserRole`, `DisableUser` |
+| `permissions:{externalId}` (5 min, tag `permissions`) | Authorization | `ChangeUserRole`, `DisableUser` (key); `RoleSeeder` when the matrix changes (tag) |
 | `progress:{userId}` | Progress | results consumer |
 | `admin:stats:{days}` (60 s) | Admin | expiry only |
 
@@ -682,9 +682,11 @@ parse) instead of `any`. No `@ts-ignore`; `@ts-expect-error` only with a reason.
 
 ```
 src/
-  main.tsx  routes.tsx  config.ts
-  lib/        api.ts (useApi, ApiError), queryClient.ts
-  components/ shared presentational components only (Button, Spinner, Badge)
+  main.tsx  routes.tsx  config.ts  index.css
+  lib/        api.ts (useApi, ApiError), queryClient.ts, utils.ts (cn)
+  components/ui/ shadcn/ui primitives (generated, re-skinned — FE-16, KD-07)
+  components/ shared presentational components only (Button, Spinner, Badge, VerdictBadge, BudgetBar)
+  stores/     zustand stores for client UI state only (FE-15)
   features/
     problems/     ProblemList, ProblemFilters, useProblems.ts, types.ts
     editor/       EditorPage, CodeEditor, StatementPane
@@ -750,7 +752,7 @@ enforces everything. `/admin` is `lazy()`-loaded so learners never download it.
 
 Function components + hooks only; one component per file, `PascalCase.tsx`, named exports (file names: NM-13); hooks are
 `useX.ts`; props typed with a `type XProps`; no prop drilling beyond two levels (lift to a hook or context);
-no business logic in JSX — compute in hooks.
+no business logic in JSX — compute in hooks. **Exception:** `src/components/ui/` (shadcn/ui, KD-07).
 
 ---
 
@@ -765,7 +767,9 @@ pass/fail (icon + text), focus returned after dialogs.
 ### FE-11 🟡 Styling with Tailwind; no inline style sprawl
 
 Tailwind utilities (v4 via `@tailwindcss/vite`); shared variants in components, not copy-pasted class strings.
-Inline `style` only for computed values (e.g. budget bar width).
+Variants are declared with `cva` (class-variance-authority) and merged with `cn()` from `lib/utils.ts`; only
+colour **roles** from `tokens.css` (`bg-surface`, `text-ink-muted`, `bg-primary` via the bridge) — never raw
+palette classes (`bg-zinc-900`, `text-white`). Inline `style` only for computed values (e.g. budget bar width).
 
 ---
 
@@ -781,7 +785,13 @@ wrapper around `useAuth` to toggle signed-in state.
 
 Astro `output: 'static'`. The catalog is generated from `problems/*/problem.yaml` before `astro build` and
 contains **summaries only** (title, track, difficulty, tags, statement excerpt) — never tests or reference
-solutions. Deep links carry `?entry=` for attribution.
+solutions. Deep links carry `?entry=` for attribution. **Same design, no client framework:** Tailwind v4 via
+`@tailwindcss/vite` (never `@astrojs/tailwind`), the same `docs/design/tokens.css` imported by relative path
+(never a copy), `.astro` components whose classes mirror the app's `cva` variants, colour roles only (FE-11),
+icons from `lucide-static` inlined at build time, no React islands (shadcn/ui, zustand and lucide-react are
+`apps/web` only — ADR 0007). Docker builds get `docs/design` and `problems/` as additional build contexts; the
+final image contains `dist/` only.
+**Check:** `check-rules.ps1` FE-11 + FE-13 (no React/shadcn/zustand imports, no `@astrojs/tailwind`) + RA-06.
 
 ---
 
@@ -789,6 +799,45 @@ solutions. Deep links carry `?entry=` for attribution.
 
 `build.sourcemap` off (or uploaded privately), no `console.log` left in committed code, verified by the
 REA bundle audit before releases.
+
+---
+
+### FE-15 🔴 zustand holds client UI state only
+
+Stores live in `src/stores/`, one per concern (`useThemeStore`, `useEditorLayoutStore`, `useDraftStore`).
+They hold **UI state that the server doesn't own**: theme, pane sizes, per-problem drafts. Never API data
+(that's TanStack Query — FE-03; copying it into a store creates a second, stale source of truth), never the
+Clerk token or user identity (`useAuth()` owns them — FE-04), never anything secret. `persist` only with an
+explicit `name` + `version`, and only for drafts/preferences. `devtools` middleware only behind
+`config.isDev` (`export const isDev = import.meta.env.DEV` in `config.ts`, FE-05 — Vite inlines it as a
+literal, so Rollup drops the branch and the devtools code from production). Components select
+slices (`useStore((s) => s.x)`), not the whole store.
+**Check:** `check-rules.ps1` FE-15 (no `getToken`/`token` in `stores/`; no unguarded `devtools(`) + RA-05
+(no `__REDUX_DEVTOOLS_EXTENSION__` in `dist/`).
+
+---
+
+### FE-16 🟠 shadcn/ui is vendored, re-skinned source
+
+`npx shadcn@latest add <component>` copies source into `src/components/ui/`; from then on it is **our code**:
+reviewed in the PR, kept warning-free, upgraded deliberately (re-run `add` and diff), never edited for one
+call site (wrap it in `components/` instead). Its CSS variables are mapped onto our colour roles by the shadcn
+bridge in `docs/design/tokens.css`; shadcn's default palettes are never used (ADR 0006: our own design).
+Generated variants are re-skinned to `docs/design/components.md` — e.g. no `text-white` on `bg-destructive`
+(fails contrast in dark mode; use `bg-fail text-surface`). Keep Radix's keyboard and ARIA behaviour; don't
+replace a primitive with a styled `div` (FE-10). Feature code imports our wrappers from `components/` where
+one exists, otherwise `@/components/ui/*`.
+**Check:** review; `check-rules.ps1` FE-11 (no raw palette classes in `components/ui`).
+
+---
+
+### FE-17 🟡 Icons from lucide-react, named imports only
+
+`import { CircleCheck } from 'lucide-react'` — never `import * as Icons` or a string-keyed icon lookup
+(`icons[name]`), which defeats tree-shaking and bloats the entry chunk. Decorative icons get
+`aria-hidden="true"`; an icon that is the only content of a control needs an accessible name (`aria-label`
+or visually hidden text). Icons never replace the status word (FE-10): ✓ + "Accepted", not ✓ alone.
+**Check:** `check-rules.ps1` FE-17.
 
 ---
 
@@ -917,7 +966,7 @@ downstream (found and fixed in `RequestContextLoggingMiddleware`, 2026-11-19).
 | `{Entity}Errors` | error catalog | `Features/{Feature}/` | `UserErrors`, `ProblemErrors` |
 | `{Entity}{PastTenseVerb}DomainEvent` | domain event | `Features/{Feature}/` | `SubmissionGradedDomainEvent` |
 | `{Feature}CacheKeys` | cache-key helpers | `Features/{Feature}/` | `UserCacheKeys`, `ProblemCacheKeys` |
-| `Permissions` | permission constants of a feature | `Features/{Feature}/` | `Permissions.ProblemsPublish` |
+| `Permissions` / `RolePermissionMatrix` | the one permission catalog / role grants | `Authorization/` | `Permissions.ProblemsPublish` |
 | `{Entity}Configuration` | `IEntityTypeConfiguration<T>` | `Database/Configurations/` | `UserConfiguration` |
 | `{Name}Seeder` | seeder | `Database/Seeding/` | `ProblemSeeder`, `RoleSeeder` |
 | `{Name}Options` (+ `const string SectionName`) | bound configuration | next to its consumer | `ClerkOptions`, `SandboxOptions` |
@@ -1036,8 +1085,11 @@ One test class per use case, not one per feature — the same unit as the slice 
 | Query keys | arrays starting with the resource (FE-03) | `['problems', filters]` |
 | Astro pages / content entries | kebab-case | `how-it-works.astro`, `blog/first-post.md` |
 | CSS tokens | `--cb-{role}` vars → Tailwind `{utility}-{role}` | `--cb-ink-muted` → `text-ink-muted` |
+| zustand stores | `stores/use{Concern}Store.ts`, hook of the same name | `useDraftStore.ts` → `export const useDraftStore` |
+| shadcn/ui primitives | kebab-case as generated, in `components/ui/` only (KD-07) | `components/ui/dropdown-menu.tsx` |
 
-**Check:** activates with `apps/web` (FE-* section of `check-rules.ps1`).
+**Check:** activates with `apps/web` (FE-* section of `check-rules.ps1`); `components/ui/` is excluded from
+the PascalCase / one-component-per-file checks.
 
 ---
 
@@ -1162,6 +1214,7 @@ npm --prefix apps/web run lint; npm --prefix apps/web test -- --run   # once the
 
 ## Frontend
 - [ ] FE-01/03/04 Strict TS · TanStack Query · all HTTP via lib/api.ts
+- [ ] FE-15/16/17 zustand = UI state only · shadcn re-skinned via tokens · lucide named imports
 - [ ] FE-05/08    Public config only · client guards are UX only
 - [ ] FE-10/12    Accessible · lint/type/tests green
 
@@ -1196,6 +1249,7 @@ npm --prefix apps/web run lint; npm --prefix apps/web test -- --run   # once the
 | KD-04 | Observability is one `grafana/otel-lgtm` container, not the five services in guide 05 | Same signals, one container, already in the template | Phase 4.2 if separate retention/scaling is needed |
 | KD-05 | EF migrations marked `generated_code` in `.editorconfig` | Tool output fails IDE0161 under analyzer-strict | None — deliberate |
 | KD-06 | Hidden tests travel over NATS (object store), not baked into images | Admin edits without image rebuilds (guide 09, ADR 0005) | None — deliberate; `backend` network stays internal-only |
+| KD-07 | `src/components/ui/` (shadcn/ui) uses kebab-case files with several exports each (`card.tsx` → `Card`, `CardHeader`, …) and exports `cva` variants | Upstream shadcn layout; renaming breaks `npx shadcn add`/diff-based upgrades. Exempt from FE-09 / NM-13 file rules and from `react-refresh/only-export-components` (ESLint override for that folder only) | None — deliberate; everything outside `components/ui/` follows FE-09 / NM-13 |
 
 ---
 
@@ -1205,6 +1259,8 @@ npm --prefix apps/web run lint; npm --prefix apps/web test -- --run   # once the
 |---|---|---|
 | 1.0 | 2026-11-18 | Initial rulebook for CodeBench: VSA template conventions + guide 00–09 boundaries + frontend standards; `scripts/check-rules.ps1` |
 | 1.1 | 2026-11-19 | Part 12 Naming (NM-01…NM-14) + 10 automated checks; `.editorconfig` naming enforced (IDE1006); XC-02 check fixed (was vacuous: `#` lines skipped, `tests/` not scanned); TS-02 points to NM-11; KD-01 closed |
+| 1.2 | 2026-11-22 | Frontend stack adds shadcn/ui, lucide-react, zustand: FE-15 (zustand = client UI state only), FE-16 (shadcn vendored + re-skinned via the token bridge), FE-17 (lucide named imports); FE-02 tree, FE-09/FE-11/NM-13 updated; KD-07 (`components/ui/` naming exception); RA-05 also rejects devtools hooks; check-rules FE-11/15/17 |
+| 1.3 | 2026-11-23 | FE-13 extended: Astro uses Tailwind v4 via `@tailwindcss/vite`, the same `tokens.css` by relative import, `.astro` components mirroring the app's variants, `lucide-static`, no client framework; additional Docker build contexts; check-rules FE-11 + FE-13 cover `apps/marketing` |
 
 > **Keeping this current:** when you accept a new trade-off, add it to *Known Deviations* with an exit
 > condition. When you add a rule, give it an ID, a severity, a *why*, and a check. A rule without an

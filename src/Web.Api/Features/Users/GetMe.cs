@@ -11,7 +11,7 @@ namespace Web.Api.Features.Users;
 
 /// <summary>
 /// <c>GET /me</c> — the signed-in user's account and permissions (drives <c>RequirePermission</c> in the UI).
-/// Role and plan are added with the role matrix (build plan 1.2–1.3).
+/// <c>permissions</c> come from the database role matrix (SC-03); <c>role</c>/<c>plan</c> are informational for the UI.
 /// </summary>
 public static class GetMe
 {
@@ -22,6 +22,10 @@ public static class GetMe
         public required Guid Id { get; init; }
 
         public required string Email { get; init; }
+
+        public required Role Role { get; init; }
+
+        public required Plan Plan { get; init; }
 
         public required IReadOnlyList<string> Permissions { get; init; }
     }
@@ -41,7 +45,7 @@ public static class GetMe
 
             var user = await db.Users
                 .Where(u => u.Id == userId)
-                .Select(u => new { u.Id, u.Email })
+                .Select(u => new { u.Id, u.Email, u.Role, u.Plan })
                 .SingleOrDefaultAsync(cancellationToken);
 
             if (user is null)
@@ -56,6 +60,8 @@ public static class GetMe
             {
                 Id = user.Id,
                 Email = user.Email,
+                Role = user.Role,
+                Plan = user.Plan,
                 Permissions = [.. permissions.Order(StringComparer.Ordinal)]
             };
         }
@@ -68,6 +74,10 @@ public static class GetMe
             app.MapGet("me", async (IQueryHandler<Query, Response> handler, CancellationToken cancellationToken) =>
                 (await handler.Handle(new Query(), cancellationToken)).Match(Results.Ok, CustomResults.Problem))
             .RequireAuthorization()
+            .WithName(nameof(GetMe))
+            .Produces<Response>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status404NotFound)
             .WithTags(Tags.Users);
         }
     }

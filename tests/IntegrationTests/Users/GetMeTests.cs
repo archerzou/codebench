@@ -1,6 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using IntegrationTests.Authentication;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Web.Api.Authorization;
+using Web.Api.Database;
 using Web.Api.Features.Users;
 
 namespace IntegrationTests.Users;
@@ -20,12 +24,45 @@ public sealed class GetMeTests(IntegrationTestWebAppFactory factory) : BaseInteg
     {
         User user = await SignInAsNewUserAsync();
 
-        GetMe.Response? me = await HttpClient.GetFromJsonAsync<GetMe.Response>("me");
+        GetMe.Response? me = await HttpClient.GetFromJsonAsync<GetMe.Response>("me", TestJson.Options);
 
         me.ShouldNotBeNull();
         me.Id.ShouldBe(user.Id);
         me.Email.ShouldBe(user.Email);
-        me.Permissions.ShouldBeEmpty();     // role matrix arrives in step 1.3
+        me.Permissions.ShouldBe(["problems:read", "submissions:create", "submissions:read-own"]);
+    }
+
+    [Theory]
+    [InlineData(Role.Learner)]
+    [InlineData(Role.Author)]
+    [InlineData(Role.Admin)]
+    public async Task GetMe_Should_ListRolePermissionsFromDatabase_When_SignedIn(Role role)
+    {
+        User user = await CreateUserAsync(role: role);
+        Authenticate(TestJwt.Create(user.ExternalId));
+
+        GetMe.Response? me = await HttpClient.GetFromJsonAsync<GetMe.Response>("me", TestJson.Options);
+
+        me.ShouldNotBeNull().Permissions.ShouldBe(RolePermissionMatrix.ByRole[role], ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task GetMe_Should_ListNoPermissions_When_UserIsDisabled()
+    {
+        User user = await CreateUserAsync(role: Role.Admin);
+        using (IServiceScope scope = Factory.Services.CreateScope())
+        {
+            ApplicationDbContext db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            User tracked = await db.Users.SingleAsync(u => u.Id == user.Id);
+            tracked.Disable();
+            await db.SaveChangesAsync();
+        }
+
+        Authenticate(TestJwt.Create(user.ExternalId));
+
+        GetMe.Response? me = await HttpClient.GetFromJsonAsync<GetMe.Response>("me", TestJson.Options);
+
+        me.ShouldNotBeNull().Permissions.ShouldBeEmpty();
     }
 
     [Fact]
@@ -48,7 +85,7 @@ public sealed class GetMeTests(IntegrationTestWebAppFactory factory) : BaseInteg
         (await HttpClient.GetAsync("me")).StatusCode.ShouldBe(HttpStatusCode.NotFound);
 
         User user = await CreateUserAsync(externalId);
-        GetMe.Response? me = await HttpClient.GetFromJsonAsync<GetMe.Response>("me");
+        GetMe.Response? me = await HttpClient.GetFromJsonAsync<GetMe.Response>("me", TestJson.Options);
 
         me.ShouldNotBeNull();
         me.Id.ShouldBe(user.Id);
