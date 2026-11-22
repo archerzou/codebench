@@ -4,6 +4,7 @@ track: algorithms
 difficulty: easy
 grader: algorithms
 free: true
+sortOrder: 20
 tags: [strings, hashing]
 signature: "public int FirstUniqueIndex(string s)"
 statement: |

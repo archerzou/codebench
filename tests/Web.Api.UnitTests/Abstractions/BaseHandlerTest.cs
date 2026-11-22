@@ -19,7 +19,7 @@ public abstract class BaseHandlerTest
     protected static HybridCache CreateCache()
     {
         var services = new ServiceCollection();
-#pragma warning disable EXTEXP0018
+#pragma warning disable EXTEXP0018 // HybridCache is released; the API is stable in .NET 10 (same as the API's registration).
         services.AddHybridCache();
 #pragma warning restore EXTEXP0018
         return services.BuildServiceProvider().GetRequiredService<HybridCache>();

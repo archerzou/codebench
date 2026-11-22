@@ -19,14 +19,34 @@ namespace Web.Api.Features.Projects;
 
 public sealed class Project : Entity
 {
-    public Guid Id { get; set; }
-    public Guid OwnerId { get; set; }
-    public string Name { get; set; }
-    public DateTime CreatedAt { get; set; }
+    private Project()                      // for EF
+    {
+    }
+
+    public Guid Id { get; private set; }
+    public Guid OwnerId { get; private set; }
+    public string Name { get; private set; } = string.Empty;
+    public ProjectStatus Status { get; private set; }
+    public DateTime CreatedAt { get; private set; }
+
+    public static Project Create(Guid ownerId, string name, DateTime createdAt)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        var project = new Project { Id = Guid.CreateVersion7(), OwnerId = ownerId, Name = name, CreatedAt = createdAt };
+        project.Raise(new ProjectCreatedDomainEvent(project.Id));
+        return project;
+    }
+
+    public Result Archive()                // guarded + idempotent transition (DM-02)
+    {
+        if (Status == ProjectStatus.Archived) return Result.Success();
+        Status = ProjectStatus.Archived;
+        return Result.Success();
+    }
 }
 ```
 
-`sealed class`, inherits `Entity` (from `Web.Api.Common` — gives it `DomainEvents` + `Raise(...)`), `Guid Id`, plain settable properties, collections initialized with `= [];`.
+`sealed class`, inherits `Entity` (from `Web.Api.Common` — gives it `DomainEvents` + `Raise(...)`), private parameterless constructor for EF, `private set` everywhere, a static factory that raises the `Created` event, and state changes as methods returning `Result` (DM-01, DM-02). Time is passed in (from `IDateTimeProvider`, DM-04). More than ~7 inputs → take a `{Entity}Content` record (see `ProblemContent`). Invariant violations (blank required strings) throw `ArgumentException` — they are bugs; expected business failures return `Result.Failure`. Enums: one per file (NM-01), stored as text (`HasConversion<string>()`). Collections: `IReadOnlyList<T> … = [];` and copy on assignment (`[.. source]`). Real examples: `Features/Problems/Problem.cs`, `TestCase.cs`, `Features/Users/User.cs`.
 
 2. **Error catalog** — `src/Web.Api/Features/{Entity}/{Entity}Errors.cs`
 
@@ -85,10 +105,10 @@ Relationships are configured shadow-style (`HasOne<User>().WithMany()`) — enti
 6. **Migration** — from the repo root (single project, so it's both `--project` and `--startup-project`):
 
 ```
-dotnet ef migrations add Add_{Plural} --project src/Web.Api --startup-project src/Web.Api
+dotnet ef migrations add Phase{N}_{Words} --project src/Web.Api --startup-project src/Web.Api --output-dir Database/Migrations
 ```
 
-Migration names are `PascalCase_With_Underscores` (see `Add_RefreshTokens`).
+Migration names are `Phase{N}[A]_{Words_With_Underscores}` (NM-09, checked by `check-rules.ps1`), e.g. `Phase1_Problems_Users`. Review `Up()` before applying, then add an integration test for anything EF InMemory can't see (jsonb, arrays, check constraints, `xmin`, cascades) — see `tests/IntegrationTests/Database/EntityPersistenceTests.cs`.
 
 ## Rules
 

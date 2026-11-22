@@ -3,15 +3,17 @@ using Serilog.Context;
 
 namespace Web.Api.Common.Middleware;
 
-public class RequestContextLoggingMiddleware(RequestDelegate next)
+public sealed class RequestContextLoggingMiddleware(RequestDelegate next)
 {
     private const string CorrelationIdHeaderName = "Correlation-Id";
 
-    public Task Invoke(HttpContext context)
+    public async Task InvokeAsync(HttpContext context)
     {
+        // Awaited inside the using: the CorrelationId property must stay pushed for the whole pipeline,
+        // not just until its first await.
         using (LogContext.PushProperty("CorrelationId", GetCorrelationId(context)))
         {
-            return next.Invoke(context);
+            await next(context);
         }
     }
 

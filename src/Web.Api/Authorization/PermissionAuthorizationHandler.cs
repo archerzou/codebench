@@ -1,9 +1,12 @@
-﻿using Web.Api.Authentication;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.AspNetCore.Authorization;
+using Web.Api.Authentication;
 
 namespace Web.Api.Authorization;
 
+/// <summary>
+/// Grants a permission requirement only if the caller is authenticated and our database grants the
+/// permission (SC-03). Fails closed: anonymous, unknown or permission-less callers are denied.
+/// </summary>
 internal sealed class PermissionAuthorizationHandler(IServiceScopeFactory serviceScopeFactory)
     : AuthorizationHandler<PermissionRequirement>
 {
@@ -11,12 +14,10 @@ internal sealed class PermissionAuthorizationHandler(IServiceScopeFactory servic
         AuthorizationHandlerContext context,
         PermissionRequirement requirement)
     {
-        // TODO: You definitely want to reject unauthenticated users here.
-        if (context.User is { Identity.IsAuthenticated: true })
-        {
-            // TODO: Remove this call when you implement the PermissionProvider.GetForUserIdAsync
-            context.Succeed(requirement);
+        string? externalId = context.User.GetExternalId();
 
+        if (externalId is null)
+        {
             return;
         }
 
@@ -24,9 +25,7 @@ internal sealed class PermissionAuthorizationHandler(IServiceScopeFactory servic
 
         PermissionProvider permissionProvider = scope.ServiceProvider.GetRequiredService<PermissionProvider>();
 
-        Guid userId = context.User.GetUserId();
-
-        HashSet<string> permissions = await permissionProvider.GetForUserIdAsync(userId);
+        IReadOnlySet<string> permissions = await permissionProvider.GetForExternalIdAsync(externalId);
 
         if (permissions.Contains(requirement.Permission))
         {

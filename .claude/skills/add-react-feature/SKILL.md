@@ -27,8 +27,14 @@ apps/web/src/features/<name>/
    hooks directly. Query keys start with the resource: `['bookmarks']`, `['bookmarks', id]`. Mutations
    invalidate affected keys; work-creating POSTs send `Idempotency-Key: crypto.randomUUID()` *[FE-07]*.
    No `useEffect` data fetching *[FE-03]*.
-3. **Components** — function components, typed `Props`, Tailwind utilities, semantic HTML, labels,
-   keyboard access, `aria-live` for async results *[FE-09–FE-11]*. Errors render `ApiError.detail`.
+3. **Components** — function components, typed `Props`, Tailwind utilities (colour **roles** only, variants
+   with `cva` + `cn()`), semantic HTML, labels, keyboard access, `aria-live` for async results
+   *[FE-09–FE-11]*. Errors render `ApiError.detail`. Build on our wrappers in `components/` or on shadcn
+   primitives in `components/ui/`; need a new primitive? `npx shadcn@latest add <name>` (from `apps/web`),
+   review the generated file and re-skin it — hover `bg-accent` → `bg-surface-sunken`, no `text-white`
+   *[FE-16]*. Icons: `lucide-react` named imports, `aria-hidden` beside a visible word *[FE-17]*.
+   Client-only UI state (layout, preferences, drafts) goes in a zustand store in `src/stores/` — never API
+   data or tokens *[FE-15]*.
 4. **Routing** — add the route in `routes.tsx`; signed-in-only pages wrap in `<SignedIn>` /
    `<RedirectToSignIn/>`; permission-gated UI uses `RequirePermission` (UX only — the API enforces) *[FE-08]*.
    Heavy or admin-only pages are `lazy()`-loaded.
@@ -46,4 +52,5 @@ apps/web/src/features/<name>/
 ## Done when
 
 Lint (zero warnings), type-check and tests pass; the feature works against the running API at
-http://localhost:5173; no new `any`, `fetch` or `import.meta.env` outside the allowed files.
+http://localhost:5173; no new `any`, `fetch` or `import.meta.env` outside the allowed files; no raw palette
+classes, no `import * as` from `lucide-react`, no API data or tokens in `stores/`.

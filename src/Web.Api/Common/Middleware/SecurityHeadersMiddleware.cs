@@ -3,7 +3,7 @@ namespace Web.Api.Common.Middleware;
 // Adds a conservative set of security response headers to every response.
 public sealed class SecurityHeadersMiddleware(RequestDelegate next)
 {
-    public Task Invoke(HttpContext context)
+    public Task InvokeAsync(HttpContext context)
     {
         context.Response.Headers["X-Content-Type-Options"] = "nosniff";
         context.Response.Headers["X-Frame-Options"] = "DENY";

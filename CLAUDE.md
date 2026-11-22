@@ -15,7 +15,7 @@ calling work done.
 
 ```text
 apps/marketing        Astro static site (codebench.localhost)
-apps/web              React + Vite + TS app incl. /admin (app.codebench.localhost)
+apps/web              React + Vite + TS app incl. /admin (app.codebench.localhost) — Tailwind v4, shadcn/ui, lucide-react, zod, TanStack Query, zustand (ADR 0007)
 src/Web.Api           .NET 10 API — vertical slices (namespace Web.Api)
 src/Contracts         NATS message records shared by API + Worker (CodeBench.Contracts) — BCL only
 src/Worker            grading orchestrator (CodeBench.Worker) — NATS + sandbox daemon only, NO database
@@ -35,7 +35,7 @@ There is **no** Domain/Application/Infrastructure/SharedKernel split.
 - **`Common/`** — cross-cutting building blocks: `Result`/`Result<T>`, `Error`/`ErrorType`/`ValidationError`, `Entity`, `IDomainEvent`, `IDateTimeProvider` (`Web.Api.Common`); `ICommand`/`IQuery` + handler interfaces (`Common.Messaging`); validation + logging decorators (`Common.Behaviors`); `IEndpoint` + `Tags` + endpoint extensions (`Common.Endpoints`); `PagedList<T>`, `IdempotencyFilter`, security headers; and migration/observability/rate-limiting/result extensions (`Common.Extensions`).
 - **`Database/`** — `ApplicationDbContext`, EF configurations in `Database/Configurations/`, migrations in `Database/Migrations/`, the domain-event dispatcher, seeders in `Database/Seeding/`.
 - **`Messaging/`** — NATS JetStream infrastructure: outbox publisher, graded-result consumer, stream/object-store setup, problem-bundle publisher. (Distinct from `Common/Messaging`, which is the in-process CQRS interfaces.)
-- **`Authentication/`** / **`Authorization/`** — currently the template's JWT + refresh tokens; Phase 1 replaces issuing with Clerk validation (ADR 0001). `IUserContext`, permission-based authorization.
+- **`Authentication/`** / **`Authorization/`** — Clerk session-token validation (issuer/JWKS, lifetime, `azp`; ADR 0001), `IUserContext` (`ExternalId` = Clerk `sub`, `UserId` resolved per request by `UserResolutionMiddleware`, cached `users:ext:{sub}`), permission-based authorization that fails closed (permissions from our DB). The API never issues tokens.
 - **`Notifications/`** — `IEmailSender` + `LoggingEmailSender`.
 - **`BackgroundJobs/`** — hosted `BackgroundService` workers (add as needed; see `/add-background-job`).
 

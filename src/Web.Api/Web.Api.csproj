@@ -11,6 +11,7 @@
     <PackageReference Include="Scrutor" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
     <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.AspNetCore" />
     <PackageReference Include="Serilog.Sinks.OpenTelemetry" />
@@ -20,6 +21,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="YamlDotNet" />
     <PackageReference Include="Newtonsoft.Json" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools">
       <PrivateAssets>all</PrivateAssets>
@@ -28,9 +30,13 @@
 
     <!-- Authentication -->
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Svix" />
 
     <!-- Health checks -->
     <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
+
+    <!-- Messaging (NATS JetStream; health check now, outbox/consumer in Phase 2) -->
+    <PackageReference Include="NATS.Net" />
     <PackageReference Include="AspNetCore.HealthChecks.UI.Client" />
 
     <!-- API / OpenAPI -->

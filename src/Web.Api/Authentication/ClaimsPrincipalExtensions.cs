@@ -4,12 +4,9 @@ namespace Web.Api.Authentication;
 
 internal static class ClaimsPrincipalExtensions
 {
-    public static Guid GetUserId(this ClaimsPrincipal? principal)
-    {
-        string? userId = principal?.FindFirstValue(ClaimTypes.NameIdentifier);
-
-        return Guid.TryParse(userId, out Guid parsedUserId) ?
-            parsedUserId :
-            throw new ApplicationException("User id is unavailable");
-    }
+    /// <summary>The Clerk user id (<c>sub</c>) of an authenticated principal, otherwise null.</summary>
+    public static string? GetExternalId(this ClaimsPrincipal? principal) =>
+        principal?.Identity?.IsAuthenticated == true
+            ? principal.FindFirstValue(ClerkClaims.Subject)
+            : null;
 }

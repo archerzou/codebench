@@ -407,6 +407,8 @@ deploy/.env.*
 !deploy/.env.example
 **/.env.local
 apps/marketing/.env
+# Generated from problems/*/problem.yaml before every build (summaries only, FE-13)
+apps/marketing/src/content/problems/
 # Local data / recon captures (REA HAR files hold session cookies)
 backups/
 captures/

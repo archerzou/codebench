@@ -10,6 +10,7 @@ You need accounts with two third-party services to run the MVP (Clerk and GitHub
 | Clerk | Phase 1 | Issuer (Frontend API URL) | `https://<name>.clerk.accounts.dev` | No | Dashboard → API keys ("Frontend API URL") | API (JWT validation, JWKS) |
 | Clerk | Phase 1 | Secret key | `sk_test_...` | **Yes** | Dashboard → API keys | API (only if calling Clerk's Backend API), E2E testing tokens |
 | Clerk | Phase 1 | Webhook signing secret | `whsec_...` | **Yes** | Dashboard → Webhooks → your endpoint | API (`/webhooks/clerk` verification) |
+| Clerk | Phase 1 | Session token claims (config, not a key) | `{"email": "{{user.primary_email_address}}", "email_verified": "{{user.email_verified}}"}` | No | Dashboard → Sessions → Customize session token | API (first-request user provisioning; bootstrap admin needs `email_verified`) |
 | GitHub | Phase 3 | `GITHUB_TOKEN` | automatic | Yes | Provided to every workflow run | Actions: push images to GHCR |
 | GitHub | Phase 3 | Personal access token (fine-grained or classic), `read:packages` only | `ghp_...` / `github_pat_...` | **Yes** | Settings → Developer settings → Tokens | Your machine and the worker: pull private GHCR images |
 | Paddle (option A) | Phase 7 | API key (sandbox) | starts with your sandbox prefix | **Yes** | Sandbox dashboard → Developer tools → Authentication | API: create checkouts, read subscriptions |
@@ -170,7 +171,7 @@ cd src/Web.Api
 dotnet user-secrets init
 dotnet user-secrets set "ConnectionStrings:Database" "Host=localhost;Port=15432;Database=codebench;Username=codebench;Password=<pw>"
 dotnet user-secrets set "ConnectionStrings:Redis" "localhost:16379,password=<pw>"
-dotnet user-secrets set "ConnectionStrings:Nats" "nats://codebench:<pw>@localhost:4222"
+dotnet user-secrets set "ConnectionStrings:Nats" "nats://codebench:<pw>@127.0.0.1:4222"   # not localhost: see note below
 dotnet user-secrets set "Clerk:Issuer" "https://YOUR-INSTANCE.clerk.accounts.dev"
 dotnet user-secrets set "Clerk:WebhookSecret" "whsec_..."
 dotnet user-secrets set "Clerk:AuthorizedParties:0" "http://localhost:5173"
@@ -178,10 +179,15 @@ dotnet user-secrets set "Clerk:AuthorizedParties:0" "http://localhost:5173"
 # Worker
 cd ../Worker
 dotnet user-secrets init
-dotnet user-secrets set "ConnectionStrings:Nats" "nats://codebench:<pw>@localhost:4222"
+dotnet user-secrets set "ConnectionStrings:Nats" "nats://codebench:<pw>@127.0.0.1:4222"
 dotnet user-secrets set "Sandbox:Images:algorithms" "codebench-sandbox-algorithms:dev"
 # DOCKER_HOST=tcp://127.0.0.1:2375 as an environment variable (dev override publishes it on localhost only)
 ```
+
+**Use `127.0.0.1`, not `localhost`, for NATS.** On Windows `localhost` resolves to `::1` first, the dev override
+publishes ports on `127.0.0.1` only, and NATS.Net tries just the first address — the connection is refused
+(`/health` shows `nats Unhealthy: can not connect uris`). Npgsql and StackExchange.Redis try every address, so
+`localhost` happens to work for them.
 
 ```dotenv
 # apps/web/.env.local  (git-ignored by Vite's default .gitignore)
