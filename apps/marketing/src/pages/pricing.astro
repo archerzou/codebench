@@ -1,0 +1,89 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Button from '../components/Button.astro';
+import Badge from '../components/Badge.astro';
+import TrackBadge from '../components/TrackBadge.astro';
+import Icon from '../components/Icon.astro';
+import check from 'lucide-static/icons/check.svg?raw';
+import { appLink } from '../config';
+import { tracks, statusLabel } from '../lib/domain';
+
+const free = [
+  'Every free problem, for good',
+  'Run against the examples without an account',
+  'Submit and keep your history with a free account',
+  'Time and allocation results on every test',
+];
+
+const pro = [
+  'Everything in Free',
+  'Pro problems in every track',
+  'New tracks as their graders ship: database, refactoring, then architecture, secure coding and test writing',
+];
+---
+
+<BaseLayout
+  title="Pricing"
+  description="CodeBench is free to start. Pro adds the paid problems and the newer tracks as they open."
+>
+  <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+    <header class="max-w-2xl">
+      <h1 class="text-3xl font-semibold tracking-tight">Pricing</h1>
+      <p class="mt-2 text-lg text-ink-muted">Start free. Upgrade when you want the rest of the catalog.</p>
+    </header>
+
+    <div class="mt-10 grid gap-6 md:grid-cols-2">
+      <section aria-labelledby="plan-free" class="flex flex-col rounded-lg border border-line bg-surface-raised p-6">
+        <h2 id="plan-free" class="text-xl font-semibold">Free</h2>
+        <p class="tabular mt-1 text-2xl">$0</p>
+        <ul class="mt-6 flex flex-1 flex-col gap-2 text-sm">
+          {free.map((item) => <li class="flex gap-2"><Icon svg={check} class="mt-0.5 size-4 text-accent" />{item}</li>)}
+        </ul>
+        <Button href={appLink('/sign-up', 'pricing-free')} class="mt-8 self-start">Start free</Button>
+      </section>
+
+      <section aria-labelledby="plan-pro" class="flex flex-col rounded-lg border border-accent bg-surface-raised p-6">
+        <div class="flex items-center gap-2">
+          <h2 id="plan-pro" class="text-xl font-semibold">Pro</h2>
+          <Badge tone="accent">Coming</Badge>
+        </div>
+        <p class="mt-1 text-2xl text-ink-muted">Price announced at launch</p>
+        <ul class="mt-6 flex flex-1 flex-col gap-2 text-sm">
+          {pro.map((item) => <li class="flex gap-2"><Icon svg={check} class="mt-0.5 size-4 text-accent" />{item}</li>)}
+        </ul>
+        <p class="mt-8 text-sm text-ink-muted">
+          Checkout isn't open yet. Start free now — your account and history carry over.
+        </p>
+      </section>
+    </div>
+
+    <section aria-labelledby="by-track" class="mt-14">
+      <h2 id="by-track" class="text-xl font-semibold">By track</h2>
+      <div class="mt-4 overflow-x-auto">
+        <table class="w-full text-sm">
+          <caption class="sr-only">Which tracks each plan includes</caption>
+          <thead>
+            <tr class="border-b border-line text-left text-xs text-ink-muted">
+              <th scope="col" class="py-2 pr-4 font-medium">Track</th>
+              <th scope="col" class="py-2 pr-4 font-medium">Status</th>
+              <th scope="col" class="py-2 pr-4 font-medium">Free</th>
+              <th scope="col" class="py-2 font-medium">Pro</th>
+            </tr>
+          </thead>
+          <tbody>
+            {
+              tracks.map((t) => (
+                <tr class="border-b border-line">
+                  <th scope="row" class="py-2.5 pr-4 text-left font-normal"><TrackBadge track={t.track} class="text-sm" /></th>
+                  <td class="py-2.5 pr-4 text-ink-muted">{statusLabel[t.status]}</td>
+                  <td class="py-2.5 pr-4">{t.track === 'algorithms' ? 'Free problems' : 'Free problems, when open'}</td>
+                  <td class="py-2.5">All problems</td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</BaseLayout>

@@ -1,0 +1,28 @@
+---
+/** Mirrors apps/web VerdictBadge: icon + word for every verdict — colour is never the only signal (FE-10). */
+import Badge from './Badge.astro';
+import Icon from './Icon.astro';
+import circleCheck from 'lucide-static/icons/circle-check.svg?raw';
+import circleX from 'lucide-static/icons/circle-x.svg?raw';
+import braces from 'lucide-static/icons/braces.svg?raw';
+import timer from 'lucide-static/icons/timer.svg?raw';
+import triangleAlert from 'lucide-static/icons/triangle-alert.svg?raw';
+import info from 'lucide-static/icons/info.svg?raw';
+
+export type Verdict = 'Accepted' | 'WrongAnswer' | 'CompileError' | 'Timeout' | 'BudgetExceeded' | 'InternalError';
+type Props = { verdict: Verdict; class?: string };
+
+const looks = {
+  Accepted: { label: 'Accepted', svg: circleCheck, tone: 'pass' },
+  WrongAnswer: { label: 'Wrong answer', svg: circleX, tone: 'fail' },
+  CompileError: { label: 'Compile error', svg: braces, tone: 'fail' },
+  Timeout: { label: 'Timeout', svg: timer, tone: 'warn' },
+  BudgetExceeded: { label: 'Budget exceeded', svg: triangleAlert, tone: 'warn' },
+  InternalError: { label: 'Internal error', svg: info, tone: 'neutral' },
+} as const;
+
+const { verdict, class: className } = Astro.props;
+const look = looks[verdict];
+---
+
+<Badge tone={look.tone} class={className}><Icon svg={look.svg} class="size-3.5" />{look.label}</Badge>

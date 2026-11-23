@@ -1,0 +1,21 @@
+---
+/**
+ * Inlines a Lucide icon at build time (lucide-static, the same icon set apps/web uses through lucide-react).
+ * Usage: `import check from 'lucide-static/icons/circle-check.svg?raw'` → `<Icon svg={check} />`.
+ * Icons are decorative (`aria-hidden`); the visible word next to them carries the meaning (FE-10, FE-17).
+ */
+type Props = {
+  svg: string;
+  class?: string;
+};
+
+const { svg, class: className = 'size-4' } = Astro.props;
+
+const markup = svg
+  .replace(/<!--[\s\S]*?-->/g, '')
+  .replace(/\s(class|width|height)="[^"]*"/g, '')
+  .replace('<svg', `<svg aria-hidden="true" focusable="false" class="shrink-0 ${className}"`)
+  .trim();
+---
+
+<Fragment set:html={markup} />

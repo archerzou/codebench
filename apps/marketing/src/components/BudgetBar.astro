@@ -1,0 +1,40 @@
+---
+/** Mirrors apps/web BudgetBar: usage against a budget, bar + tabular label, `role="meter"`. */
+import { formatBytes, formatMicros } from '../lib/format';
+
+type Props = {
+  used: number;
+  budget: number;
+  unit: 'µs' | 'B';
+  /** Accessible name, e.g. "Time" or "Allocations". */
+  label: string;
+};
+
+const NEAR = 0.8;
+const MAX_FILL = 1.25;
+
+const { used, budget, unit, label } = Astro.props;
+const state = used > budget ? 'over' : used >= budget * NEAR ? 'near' : 'under';
+const fill = { under: 'bg-pass', near: 'bg-warn', over: 'bg-fail' }[state];
+const word = { under: 'within budget', near: 'near budget', over: 'over budget' }[state];
+const format = unit === 'µs' ? formatMicros : formatBytes;
+const ratio = budget > 0 ? Math.min(used / budget, MAX_FILL) : MAX_FILL;
+const text = `${format(used)} / ${format(budget)}`;
+---
+
+<div class="flex items-center gap-2">
+  <div
+    role="meter"
+    aria-label={label}
+    aria-valuemin={0}
+    aria-valuemax={budget}
+    aria-valuenow={used}
+    aria-valuetext={`${text}, ${word}`}
+    class="relative h-1.5 w-24 overflow-hidden rounded-sm bg-surface-sunken"
+  >
+    <!-- FE-11 exception: the width is a computed value. 100 % of the track = 1.25 × budget. -->
+    <div class:list={['h-full', fill]} style={`width: ${(ratio / MAX_FILL) * 100}%`}></div>
+    <div aria-hidden="true" class="absolute inset-y-0 w-px bg-ink-muted" style={`left: ${100 / MAX_FILL}%`}></div>
+  </div>
+  <span class:list={['tabular text-xs whitespace-nowrap', state === 'over' ? 'text-fail' : 'text-ink-muted']}>{text}</span>
+</div>

@@ -58,7 +58,9 @@ Pages to build:
 | `/blog/[slug]` | content collection `blog` | Articles; RSS via `@astrojs/rss` |
 | `/legal/*` | MDX | Terms, privacy, acceptable use |
 
-Generate `src/content/problems/*.md` from the same `problems/*/problem.yaml` files the API seeds from (`scripts/gen-problems.mjs`, run as `prebuild`/`predev`; it reads `../../problems` and writes **summaries only** — title, track, difficulty, tags, statement excerpt, budgets — FE-13). The generated folder is git-ignored. The catalog matches the seed files; problems added later in the admin console appear on the site only once exported to YAML (ADR 0005: the DB is the source of truth after seeding).
+Generate `src/content/problems/*.md` from the same `problems/*/problem.yaml` files the API seeds from (`scripts/gen-problems.mjs`; it reads `../../problems` and writes **summaries only** — title, track, difficulty, free, tags, limits, the statement's first paragraph, test counts — FE-13). It works from an **allow-list** of fields, so anything added to `problem.yaml` later stays private by default, and it publishes only problems whose grader is live (`LIVE_GRADERS`, mirroring `ProblemSeeder.ImplementedGraders`), so no "Solve in the editor" link points at a problem the app can't open. The generated folder is git-ignored. The catalog matches the seed files; problems added later in the admin console appear on the site only once exported to YAML (ADR 0005: the DB is the source of truth after seeding).
+
+The npm scripts chain the steps explicitly — `"build": "node scripts/gen-problems.mjs && astro build && node scripts/verify-dist.mjs"` (same for `dev` and `check`) — rather than relying on `pre*`/`post*` hooks, which npm 12 no longer runs. `scripts/verify-dist.mjs` is a leak guard: it fails the build if any reference-solution line, hidden-test value, seed SQL or source map from any `problem.yaml` appears in `dist/` (a local, always-on version of REA check RA-06).
 
 Deep links into the app carry intent, e.g. `http://app.codebench.localhost/problems/sum-of-evens?entry=home-hero`, so you can measure which entry points convert.
 

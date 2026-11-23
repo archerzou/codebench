@@ -1,0 +1,39 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Icon from '../../components/Icon.astro';
+import rss from 'lucide-static/icons/rss.svg?raw';
+import { formatDate, getPosts, isoDate } from '../../lib/blog';
+
+const posts = await getPosts();
+---
+
+<BaseLayout title="Blog" description="Notes on writing fast, lean and readable C# — and on how CodeBench grades it.">
+  <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+    <header class="flex items-end justify-between gap-4">
+      <div>
+        <h1 class="text-3xl font-semibold tracking-tight">Blog</h1>
+        <p class="mt-2 text-ink-muted">Notes on fast, lean and readable C#.</p>
+      </div>
+      <a href="/rss.xml" class="inline-flex items-center gap-1.5 text-sm text-accent hover:underline">
+        <Icon svg={rss} class="size-4" />RSS
+      </a>
+    </header>
+
+    <ul class="mt-10 divide-y divide-line border-y border-line">
+      {
+        posts.map((post) => (
+          <li class="py-6">
+            <time datetime={isoDate(post.data.pubDate)} class="tabular text-sm text-ink-muted">
+              {formatDate(post.data.pubDate)}
+            </time>
+            <h2 class="mt-1 text-xl font-medium">
+              <a href={`/blog/${post.id}`} class="hover:text-accent hover:underline">{post.data.title}</a>
+            </h2>
+            <p class="mt-2 max-w-2xl text-ink-muted">{post.data.description}</p>
+          </li>
+        ))
+      }
+    </ul>
+    {posts.length === 0 && <p class="mt-10 text-ink-muted">No posts yet.</p>}
+  </div>
+</BaseLayout>

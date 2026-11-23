@@ -1,0 +1,35 @@
+---
+layout: ../../layouts/ProseLayout.astro
+title: Privacy
+description: What CodeBench stores about you, why, and for how long.
+updated: 2026-11-24
+---
+
+## This website
+
+This marketing site is static. It sets **no cookies**, runs **no analytics** and loads nothing from third parties.
+Links into the app carry an `entry` parameter (for example `?entry=home-hero`) so we can tell which page a visit
+came from; it identifies the link, not you.
+
+## The app
+
+When you sign in to the app at `app.codebench.localhost`:
+
+| What | Why | Where |
+| --- | --- | --- |
+| Email address and account id | To sign you in and recognise your account | Our authentication provider (Clerk) and our database |
+| Role and plan | To decide what you can open | Our database |
+| Code you run or submit, and its results | To grade it and show you your history | Our database |
+| Editor drafts and your theme choice | So you don't lose work | Your browser only (`localStorage`) |
+
+Signing in uses session cookies set by the authentication provider. We don't sell or share your data, and we
+don't use it for advertising.
+
+## Deleting your data
+
+Delete your account from the provider's account screen. We then remove your email address, disable the account and
+keep past submissions only in anonymised form, so aggregate statistics stay correct.
+
+## Changes
+
+This page will be updated before any paid plan or payment provider is added.

@@ -1,0 +1,20 @@
+---
+/** Mirrors apps/web `components/ui/badge.tsx` (`badgeVariants`). Text (plus an optional icon), never colour alone. */
+type Tone = 'neutral' | 'accent' | 'pass' | 'fail' | 'warn';
+type Props = { tone?: Tone; class?: string };
+
+const base =
+  'inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-sm border px-1.5 py-0.5 text-xs font-medium whitespace-nowrap [&>svg]:pointer-events-none [&>svg]:size-3.5';
+
+const tones: Record<Tone, string> = {
+  neutral: 'border-line bg-surface-sunken text-ink',
+  accent: 'border-accent text-accent',
+  pass: 'border-transparent bg-pass-soft text-pass',
+  fail: 'border-transparent bg-fail-soft text-fail',
+  warn: 'border-transparent bg-warn-soft text-warn',
+};
+
+const { tone = 'neutral', class: className } = Astro.props;
+---
+
+<span class:list={[base, tones[tone], className]} data-tone={tone}><slot /></span>

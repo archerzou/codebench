@@ -1,0 +1,32 @@
+---
+/** One catalog row: title (→ the problem's page), difficulty, Pro, tags, one-line summary. */
+import type { CollectionEntry } from 'astro:content';
+import Badge from './Badge.astro';
+import DifficultyBadge from './DifficultyBadge.astro';
+
+type Props = { problem: CollectionEntry<'problems'>; excerpt: string };
+const { problem, excerpt } = Astro.props;
+const { slug, title, difficulty, free, tags } = problem.data;
+---
+
+<li class="flex flex-col gap-2 py-4 sm:flex-row sm:items-start sm:gap-6">
+  <div class="min-w-0 flex-1">
+    <h3 class="text-base font-medium">
+      <a href={`/problems/${slug}`} class="text-ink hover:text-accent hover:underline">{title}</a>
+    </h3>
+    <p class="mt-1 line-clamp-2 text-sm text-ink-muted">{excerpt}</p>
+    {
+      tags.length > 0 && (
+        <ul class="mt-2 flex flex-wrap gap-2" aria-label="Tags">
+          {tags.map((tag) => (
+            <li class="font-mono text-xs text-ink-muted">#{tag}</li>
+          ))}
+        </ul>
+      )
+    }
+  </div>
+  <div class="flex shrink-0 items-center gap-2">
+    <DifficultyBadge difficulty={difficulty} />
+    {free ? <Badge tone="neutral">Free</Badge> : <Badge tone="accent">Pro</Badge>}
+  </div>
+</li>

@@ -1,0 +1,12 @@
+---
+/** Mirrors apps/web TrackBadge: mono, lowercase track name. */
+import Badge from './Badge.astro';
+import { trackLabel, type Track } from '../lib/domain';
+
+type Props = { track: Track; class?: string };
+const { track, class: className } = Astro.props;
+---
+
+<Badge tone="neutral" class:list={['border-transparent bg-transparent px-0 font-mono text-ink-muted', className]}>
+  {trackLabel(track)}
+</Badge>

@@ -44,7 +44,7 @@ export function BudgetBar({ used, budget, unit, label, className }: BudgetBarPro
         <div className={cn('h-full', fills[state])} style={{ width: `${(ratio / MAX_FILL) * 100}%` }} />
         <div aria-hidden="true" className="absolute inset-y-0 w-px bg-ink-muted" style={{ left: `${100 / MAX_FILL}%` }} />
       </div>
-      <span className={cn('tabular text-xs', state === 'over' ? 'text-fail' : 'text-ink-muted')}>{text}</span>
+      <span className={cn('tabular text-xs whitespace-nowrap', state === 'over' ? 'text-fail' : 'text-ink-muted')}>{text}</span>
     </div>
   )
 }

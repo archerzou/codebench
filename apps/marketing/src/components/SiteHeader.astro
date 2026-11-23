@@ -1,0 +1,85 @@
+---
+/**
+ * Site header (pages.md "Shared chrome"): wordmark · Problems · How it works · Pricing · Blog · spacer ·
+ * "Sign in" (link) · "Start free" (primary). Below `sm` the nav collapses into a <details> menu — no JavaScript.
+ */
+import Wordmark from './Wordmark.astro';
+import Button from './Button.astro';
+import Icon from './Icon.astro';
+import menu from 'lucide-static/icons/menu.svg?raw';
+import { appLink } from '../config';
+
+const nav = [
+  { href: '/problems', label: 'Problems' },
+  { href: '/how-it-works', label: 'How it works' },
+  { href: '/pricing', label: 'Pricing' },
+  { href: '/blog', label: 'Blog' },
+];
+
+const current = Astro.url.pathname.replace(/\/+$/, '') || '/';
+const isCurrent = (href: string) => current === href || current.startsWith(`${href}/`);
+---
+
+<header class="border-b border-line bg-surface">
+  <div class="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4 sm:px-6">
+    <a href="/" class="rounded-sm" aria-label="CodeBench home"><Wordmark /></a>
+
+    <nav aria-label="Main" class="hidden sm:block">
+      <ul class="flex items-center gap-1">
+        {
+          nav.map((item) => (
+            <li>
+              <a
+                href={item.href}
+                aria-current={isCurrent(item.href) ? 'page' : undefined}
+                class:list={[
+                  'rounded-md px-2.5 py-1.5 text-sm hover:bg-surface-sunken',
+                  isCurrent(item.href) ? 'font-medium text-ink' : 'text-ink-muted hover:text-ink',
+                ]}
+              >
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <div class="ml-auto hidden items-center gap-2 sm:flex">
+      <Button variant="ghost" size="sm" href={appLink('/sign-in', 'site-header')}>Sign in</Button>
+      <Button size="sm" href={appLink('/sign-up', 'site-header')}>Start free</Button>
+    </div>
+
+    <details class="group relative ml-auto sm:hidden">
+      <summary
+        class="flex size-9 cursor-pointer list-none items-center justify-center rounded-md text-ink hover:bg-surface-sunken [&::-webkit-details-marker]:hidden"
+      >
+        <Icon svg={menu} class="size-5" />
+        <span class="sr-only">Menu</span>
+      </summary>
+      <div class="absolute right-0 z-10 mt-2 w-56 rounded-lg border border-line bg-surface-raised p-2 shadow-float">
+        <nav aria-label="Main (mobile)">
+          <ul class="flex flex-col">
+            {
+              nav.map((item) => (
+                <li>
+                  <a
+                    href={item.href}
+                    aria-current={isCurrent(item.href) ? 'page' : undefined}
+                    class="block rounded-md px-3 py-2 text-sm text-ink hover:bg-surface-sunken"
+                  >
+                    {item.label}
+                  </a>
+                </li>
+              ))
+            }
+          </ul>
+        </nav>
+        <div class="mt-2 flex flex-col gap-2 border-t border-line pt-2">
+          <Button variant="secondary" size="sm" href={appLink('/sign-in', 'site-menu')}>Sign in</Button>
+          <Button size="sm" href={appLink('/sign-up', 'site-menu')}>Start free</Button>
+        </div>
+      </div>
+    </details>
+  </div>
+</header>

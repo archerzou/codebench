@@ -1,0 +1,73 @@
+---
+layout: ../layouts/ProseLayout.astro
+title: How it works
+description: What happens between pressing Run and reading your result — the sandbox, the budgets, the timing and the hidden tests.
+---
+
+import VerdictBadge from '../components/VerdictBadge.astro';
+
+> **Status.** The catalog and the editor are open. Grading — Run and Submit — switches on with the next release;
+> this page describes how it works.
+
+## Write
+
+Every problem opens in a browser editor with the method signature, starter code and a few worked examples. The
+budgets are on the page before you type anything: the time limit, the memory limit, and — where a test has
+them — a time and an allocation budget per test. Drafts are kept in your browser, per problem.
+
+## Run and Submit
+
+- **Run** grades your code against the visible examples. On free problems you can run without an account.
+- **Submit** grades against the visible examples *and* the hidden tests, and counts towards your progress.
+  It needs an account.
+
+Both are queued, not executed inside the web request. The result appears in the editor as soon as it's ready,
+usually within a few seconds.
+
+## The sandbox
+
+Your code runs in a throwaway container started for that one run, on a container engine that runs nothing else.
+The container has:
+
+- **no network** — not even DNS;
+- a **read-only file system** and a non-root user;
+- **CPU, memory and process limits**, and a hard time limit enforced from outside the container.
+
+When the run ends — passed, failed or killed — the container is removed. Nothing you submit can see another
+person's code or reach our database.
+
+## What gets measured
+
+Your code is compiled with Roslyn, then each test is run and checked:
+
+| Measure | How |
+| --- | --- |
+| Correctness | Your return value against the expected value (exact, unordered or approximate, as the problem states). |
+| Time | Each test runs seven times; the **median** is compared with its time budget, so one noisy run doesn't fail you. |
+| Allocations | Bytes allocated on the managed heap while the test runs, compared with its allocation budget. |
+
+A test passes only if it's correct **and** inside its budgets. A correct answer that allocates a new list on
+every call is visibly not a pass.
+
+## Hidden tests
+
+Hidden tests exist so you solve the problem rather than the examples. For each one you see its name, whether it
+passed, and its timings — never its input or its expected output. The editor shows how many there are before
+you submit.
+
+## Verdicts
+
+| Verdict | Meaning |
+| --- | --- |
+| <VerdictBadge verdict="Accepted" /> | Every test passed, inside every budget. |
+| <VerdictBadge verdict="WrongAnswer" /> | At least one test returned the wrong value. |
+| <VerdictBadge verdict="CompileError" /> | The code didn't compile; the editor points at the line. |
+| <VerdictBadge verdict="Timeout" /> | A test ran past the problem's time limit and was stopped. |
+| <VerdictBadge verdict="BudgetExceeded" /> | Correct, but over a time or allocation budget. |
+| <VerdictBadge verdict="InternalError" /> | Grading failed on our side. Your code wasn't the problem — run it again. |
+
+## Beyond algorithms
+
+Each track has its own grader. Database problems will be graded on the SQL your EF Core query emits and the plan
+Postgres chooses; refactoring problems on complexity and size metrics with behaviour pinned by tests. They open
+as their graders ship — the [catalog](/problems) lists what's available today.
