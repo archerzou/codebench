@@ -73,7 +73,9 @@ public sealed class UserTests
 
         user.DeletedAt.ShouldBe(CreatedAt.AddDays(1));
         user.IsDisabled.ShouldBeTrue();
-        user.Email.ShouldNotContain("ada");
+        // Exact value, not ShouldNotContain("ada"): the address embeds the user id as hex, and "ada" is valid hex —
+        // that assertion failed whenever the random GUID happened to contain "ada" (~1 run in 140).
+        user.Email.ShouldBe($"deleted-{user.Id:N}@users.codebench.invalid");
         user.ExternalId.ShouldBe("user_abc");
         user.DomainEvents.ShouldHaveSingleItem().ShouldBe(new UserDeletedDomainEvent(user.Id, "user_abc"));
     }
