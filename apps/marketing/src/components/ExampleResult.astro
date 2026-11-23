@@ -1,0 +1,64 @@
+---
+/**
+ * "Marketing shows the real product" (brief): a results panel built from the same pieces as the app's results.
+ * Illustrative numbers and generic test names — deliberately not taken from any seed problem, so nothing here
+ * hints at a real hidden test, its input or its budget (FE-13).
+ */
+import VerdictBadge from './VerdictBadge.astro';
+import BudgetBar from './BudgetBar.astro';
+import Icon from './Icon.astro';
+import circleCheck from 'lucide-static/icons/circle-check.svg?raw';
+
+const rows = [
+  { name: 'Example', hidden: false, micros: 3, budgetMicros: 1000, bytes: 0, budgetBytes: 4096 },
+  { name: 'Empty input', hidden: false, micros: 1, budgetMicros: 1000, bytes: 0, budgetBytes: 4096 },
+  { name: 'Negative numbers', hidden: false, micros: 2, budgetMicros: 1000, bytes: 0, budgetBytes: 4096 },
+  { name: 'Hidden test 1', hidden: true, micros: 9, budgetMicros: 1000, bytes: 0, budgetBytes: 4096 },
+  { name: 'Hidden test 2', hidden: true, micros: 412, budgetMicros: 500, bytes: 0, budgetBytes: 4096 },
+];
+---
+
+<figure class="overflow-hidden rounded-lg border border-line bg-surface-raised">
+  <figcaption class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-4 py-3">
+    <VerdictBadge verdict="Accepted" />
+    <span class="tabular text-sm text-ink">5/5 tests · 412 µs slowest · 0 B allocated</span>
+    <span class="ml-auto text-xs text-ink-muted">Example result</span>
+  </figcaption>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <caption class="sr-only">Per-test results with time and allocation budgets (illustrative numbers)</caption>
+      <thead>
+        <tr class="border-b border-line text-left text-xs text-ink-muted">
+          <th scope="col" class="px-4 py-2 font-medium">Test</th>
+          <th scope="col" class="px-4 py-2 font-medium">Result</th>
+          <th scope="col" class="px-4 py-2 font-medium">Time (median of 7)</th>
+          <th scope="col" class="px-4 py-2 font-medium">Allocated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          rows.map((row) => (
+            <tr class="border-b border-line last:border-0">
+              <th scope="row" class="px-4 py-2.5 text-left font-normal whitespace-nowrap">
+                {row.name}
+                {row.hidden && <span class="ml-1.5 text-xs text-ink-muted">(hidden)</span>}
+              </th>
+              <td class="px-4 py-2.5">
+                <span class="inline-flex items-center gap-1 text-pass">
+                  <Icon svg={circleCheck} class="size-3.5" />
+                  <span class="text-xs font-medium">Passed</span>
+                </span>
+              </td>
+              <td class="px-4 py-2.5">
+                <BudgetBar used={row.micros} budget={row.budgetMicros} unit="µs" label={`${row.name} time`} />
+              </td>
+              <td class="px-4 py-2.5">
+                <BudgetBar used={row.bytes} budget={row.budgetBytes} unit="B" label={`${row.name} allocations`} />
+              </td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+  </div>
+</figure>

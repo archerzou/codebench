@@ -1,0 +1,59 @@
+---
+import '../styles/global.css';
+import SiteHeader from '../components/SiteHeader.astro';
+import SiteFooter from '../components/SiteFooter.astro';
+
+type Props = {
+  title: string;
+  description: string;
+  /** Pages that shouldn't appear in search results (e.g. 404). */
+  noindex?: boolean;
+};
+
+const { title, description, noindex = false } = Astro.props;
+const fullTitle = title === 'CodeBench' ? title : `${title} · CodeBench`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <!-- Dark mode follows the system setting (no toggle on the site; the app's stored choice lives on another
+         origin). Runs before first paint and tracks changes. -->
+    <script is:inline>
+      (function () {
+        var mq = matchMedia('(prefers-color-scheme: dark)');
+        var apply = function () { document.documentElement.classList.toggle('dark', mq.matches); };
+        apply();
+        mq.addEventListener('change', apply);
+      })();
+    </script>
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <link rel="alternate" type="application/rss+xml" title="CodeBench blog" href="/rss.xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="CodeBench" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+  </head>
+  <body class="flex min-h-dvh flex-col">
+    <a
+      href="#main"
+      class="sr-only rounded-md bg-surface-raised px-3 py-2 text-sm text-ink shadow-float focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:z-50"
+      >Skip to content</a
+    >
+    <SiteHeader />
+    <main id="main" class="flex-1">
+      <slot />
+    </main>
+    <SiteFooter />
+  </body>
+</html>

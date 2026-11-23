@@ -1,0 +1,43 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ProblemRow from '../../components/ProblemRow.astro';
+import Button from '../../components/Button.astro';
+import { appLink } from '../../config';
+import { trackLabel } from '../../lib/domain';
+import { getProblems, groupByTrack, plainExcerpt } from '../../lib/problems';
+
+const problems = await getProblems();
+const groups = [...groupByTrack(problems)];
+---
+
+<BaseLayout
+  title="Problems"
+  description="The CodeBench catalog: C# problems by track and difficulty, each graded on correctness plus time and allocation budgets."
+>
+  <div class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+    <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div>
+        <h1 class="text-3xl font-semibold tracking-tight">Problems</h1>
+        <p class="mt-2 max-w-2xl text-ink-muted">
+          <span class="tabular">{problems.length}</span> problems. Filter, search and solve them in the app.
+        </p>
+      </div>
+      <Button variant="secondary" href={appLink('/', 'problems-catalog')}>Open the catalog in the app</Button>
+    </header>
+
+    {
+      groups.map(([track, list]) => (
+        <section aria-labelledby={`track-${track}`} class="mt-10">
+          <h2 id={`track-${track}`} class="font-mono text-sm text-ink-muted">
+            {trackLabel(track)} <span class="tabular">· {list.length}</span>
+          </h2>
+          <ul class="mt-2 divide-y divide-line border-y border-line">
+            {list.map((problem) => <ProblemRow problem={problem} excerpt={plainExcerpt(problem)} />)}
+          </ul>
+        </section>
+      ))
+    }
+
+    {problems.length === 0 && <p class="mt-10 text-ink-muted">No problems yet. Check back soon.</p>}
+  </div>
+</BaseLayout>

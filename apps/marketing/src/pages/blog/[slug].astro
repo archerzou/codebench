@@ -1,0 +1,32 @@
+---
+import { render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { formatDate, getPosts, isoDate, type Post } from '../../lib/blog';
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  return posts.map((post) => ({ params: { slug: post.id }, props: { post } }));
+}
+
+type Props = { post: Post };
+const { post } = Astro.props;
+const { Content } = await render(post);
+---
+
+<BaseLayout title={post.data.title} description={post.data.description}>
+  <article class="mx-auto max-w-6xl px-4 py-12 sm:px-6">
+    <nav aria-label="Breadcrumb" class="text-sm text-ink-muted">
+      <a href="/blog" class="hover:text-ink hover:underline">Blog</a>
+    </nav>
+    <header class="mt-4 max-w-[68ch]">
+      <h1 class="text-3xl font-semibold tracking-tight">{post.data.title}</h1>
+      <p class="mt-3 text-lg text-ink-muted">{post.data.description}</p>
+      <time datetime={isoDate(post.data.pubDate)} class="tabular mt-3 block text-sm text-ink-muted">
+        {formatDate(post.data.pubDate)}
+      </time>
+    </header>
+    <div class="prose-cb mt-8">
+      <Content />
+    </div>
+  </article>
+</BaseLayout>

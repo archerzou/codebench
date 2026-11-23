@@ -1,0 +1,48 @@
+---
+/**
+ * Mirrors apps/web `components/ui/button.tsx` (`buttonVariants`) class for class — docs/design/components.md is the
+ * reference for both. Renders an <a> when `href` is set (all site buttons are links), otherwise a <button>.
+ */
+import type { HTMLAttributes } from 'astro/types';
+
+type Variant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'link';
+type Size = 'sm' | 'md';
+
+type Props = {
+  variant?: Variant;
+  size?: Size;
+  href?: string;
+  class?: string;
+} & Omit<HTMLAttributes<'a'>, 'class' | 'href'>;
+
+const base =
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4";
+
+const variants: Record<Variant, string> = {
+  primary: 'bg-accent text-on-accent hover:bg-accent-hover',
+  secondary: 'border border-line-strong bg-surface text-ink hover:bg-surface-sunken',
+  ghost: 'text-ink hover:bg-surface-sunken',
+  danger: 'bg-fail text-surface hover:bg-fail/90',
+  link: 'text-accent underline-offset-4 hover:underline',
+};
+
+const sizes: Record<Size, string> = {
+  sm: 'h-8 px-3 has-[>svg]:px-2.5',
+  md: 'h-9 px-4 has-[>svg]:px-3',
+};
+
+const { variant = 'primary', size = 'md', href, class: className, ...rest } = Astro.props;
+const classes = [base, variants[variant], sizes[size], className];
+---
+
+{
+  href ? (
+    <a href={href} class:list={classes} data-variant={variant} {...rest}>
+      <slot />
+    </a>
+  ) : (
+    <button type="button" class:list={classes} data-variant={variant}>
+      <slot />
+    </button>
+  )
+}

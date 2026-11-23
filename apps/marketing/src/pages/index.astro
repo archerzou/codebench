@@ -1,0 +1,134 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Button from '../components/Button.astro';
+import Badge from '../components/Badge.astro';
+import DifficultyBadge from '../components/DifficultyBadge.astro';
+import TrackBadge from '../components/TrackBadge.astro';
+import ExampleResult from '../components/ExampleResult.astro';
+import Icon from '../components/Icon.astro';
+import arrowRight from 'lucide-static/icons/arrow-right.svg?raw';
+import timer from 'lucide-static/icons/timer.svg?raw';
+import cpu from 'lucide-static/icons/cpu.svg?raw';
+import database from 'lucide-static/icons/database.svg?raw';
+import gauge from 'lucide-static/icons/gauge.svg?raw';
+import { appLink } from '../config';
+import { tracks, statusLabel } from '../lib/domain';
+import { getProblems, plainExcerpt } from '../lib/problems';
+
+const problems = await getProblems();
+const freeProblems = problems.filter((p) => p.data.free);
+const tryThese = freeProblems.slice(0, 3);
+const heroProblem = freeProblems[0];
+
+const measures = [
+  { svg: timer, title: 'Time', body: 'Each test runs seven times; the median counts against a budget you can see before you start.' },
+  { svg: cpu, title: 'Allocations', body: 'Bytes allocated per test, measured by the runtime. A correct answer that allocates too much is not a pass.' },
+  { svg: database, title: 'SQL', body: 'For EF Core problems: the query your code emits and the plan Postgres chooses for it.' },
+  { svg: gauge, title: 'Readability', body: 'For refactoring problems: complexity and size metrics, with behaviour pinned by tests.' },
+];
+---
+
+<BaseLayout
+  title="CodeBench"
+  description="C# practice graded on what production cares about: correctness, time and allocation budgets, the SQL you emit and how readable the result is."
+>
+  <section class="mx-auto grid max-w-6xl items-center gap-10 px-4 pt-16 pb-12 sm:px-6 lg:grid-cols-[1fr_1.1fr] lg:pt-24">
+    <div>
+      <p class="font-mono text-sm text-accent">for C# developers</p>
+      <h1 class="mt-3 text-4xl font-semibold tracking-tight text-balance">
+        Passing the tests is the start. CodeBench grades how fast, how lean and how clear.
+      </h1>
+      <p class="mt-5 max-w-xl text-lg text-ink-muted">
+        Solve problems in a real editor. Every submission runs in a sandbox and comes back with time and memory
+        per test, measured against budgets you see before you write a line.
+      </p>
+      <div class="mt-8 flex flex-wrap gap-3">
+        <Button href={appLink(heroProblem ? `/problems/${heroProblem.data.slug}` : '/', 'home-hero')}>
+          Try a free problem <Icon svg={arrowRight} />
+        </Button>
+        <Button variant="secondary" href="/problems">Browse the catalog</Button>
+      </div>
+      <p class="mt-4 text-sm text-ink-muted">No account needed to open a free problem.</p>
+    </div>
+    <ExampleResult />
+  </section>
+
+  <section aria-labelledby="measures" class="border-y border-line bg-surface-sunken">
+    <div class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+      <h2 id="measures" class="text-2xl font-semibold tracking-tight">What gets measured</h2>
+      <p class="mt-2 max-w-2xl text-ink-muted">Numbers first. A verdict is never just green or red.</p>
+      <ul class="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {
+          measures.map((m) => (
+            <li class="rounded-lg border border-line bg-surface p-5">
+              <span class="inline-flex items-center gap-2 font-medium text-ink">
+                <Icon svg={m.svg} class="size-4 text-accent" />
+                {m.title}
+              </span>
+              <p class="mt-2 text-sm text-ink-muted">{m.body}</p>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  {
+    tryThese.length > 0 && (
+      <section aria-labelledby="try" class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+        <h2 id="try" class="text-2xl font-semibold tracking-tight">Try one now</h2>
+        <p class="mt-2 text-ink-muted">Free problems open straight in the editor.</p>
+        <ul class="mt-8 grid gap-4 md:grid-cols-3">
+          {tryThese.map((p, index) => (
+            <li class="flex flex-col rounded-lg border border-line bg-surface-raised p-5">
+              <div class="flex items-center gap-2">
+                <TrackBadge track={p.data.track} />
+                <DifficultyBadge difficulty={p.data.difficulty} />
+              </div>
+              <h3 class="mt-3 text-lg font-medium">
+                <a href={`/problems/${p.data.slug}`} class="hover:text-accent hover:underline">{p.data.title}</a>
+              </h3>
+              <p class="mt-2 line-clamp-3 flex-1 text-sm text-ink-muted">{plainExcerpt(p)}</p>
+              <Button variant="secondary" size="sm" class="mt-4 self-start" href={appLink(`/problems/${p.data.slug}`, `home-try-${index + 1}`)}>
+                Open in the editor <Icon svg={arrowRight} />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+
+  <section aria-labelledby="tracks" class="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+    <h2 id="tracks" class="text-2xl font-semibold tracking-tight">Tracks</h2>
+    <p class="mt-2 max-w-2xl text-ink-muted">
+      Each track has its own grader. Algorithms is live; the others open as their graders ship.
+    </p>
+    <ul class="mt-8 divide-y divide-line rounded-lg border border-line">
+      {
+        tracks.map((t) => (
+          <li class="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:gap-6">
+            <TrackBadge track={t.track} class="w-36 justify-start text-sm" />
+            <p class="flex-1 text-sm text-ink">{t.measures}</p>
+            <Badge tone={t.status === 'live' ? 'pass' : 'neutral'}>{statusLabel[t.status]}</Badge>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <section aria-labelledby="pricing-teaser" class="mx-auto max-w-6xl px-4 sm:px-6">
+    <div class="flex flex-col gap-4 rounded-lg border border-line bg-surface-sunken p-6 sm:flex-row sm:items-center">
+      <div class="flex-1">
+        <h2 id="pricing-teaser" class="text-lg font-semibold">Free to start</h2>
+        <p class="mt-1 text-sm text-ink-muted">
+          Free problems are free for good. Pro adds the paid problems and the newer tracks as they open.
+        </p>
+      </div>
+      <div class="flex gap-3">
+        <Button variant="secondary" href="/pricing">See pricing</Button>
+        <Button href={appLink('/sign-up', 'home-pricing')}>Start free</Button>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

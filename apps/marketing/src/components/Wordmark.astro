@@ -1,0 +1,9 @@
+---
+/** Lowercase `codebench` in the mono font + an accent block caret (brief) — same as apps/web Wordmark. */
+type Props = { class?: string };
+const { class: className = '' } = Astro.props;
+---
+
+<span class:list={['font-mono text-base font-semibold tracking-tight text-ink', className]}>
+  codebench<span aria-hidden="true" class="text-accent">▍</span>
+</span>

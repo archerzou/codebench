@@ -1,0 +1,49 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+/* The single source of colour roles, type, radius and the shadcn bridge (FE-16). Never copied:
+   the Dockerfile mounts docs/design at the same relative path (additional build context "design"). */
+@import "../../../docs/design/tokens.css";
+/* Clerk's shadcn theme (sign-in / sign-up / UserButton) — reads the unprefixed shadcn variables below. */
+@import "@clerk/themes/shadcn.css";
+
+/* Unprefixed shadcn variables for Clerk's theme, mapped onto CodeBench roles exactly like the bridge in
+   tokens.css (same pairs, same measured contrast). Defined on :root; the .dark values flow through --cb-*. */
+:root {
+  --background: var(--cb-surface);
+  --foreground: var(--cb-ink);
+  --card: var(--cb-surface-raised);
+  --card-foreground: var(--cb-ink);
+  --popover: var(--cb-surface-raised);
+  --popover-foreground: var(--cb-ink);
+  --primary: var(--cb-accent);
+  --primary-foreground: var(--cb-on-accent);
+  --muted: var(--cb-surface-sunken);
+  --muted-foreground: var(--cb-ink-muted);
+  --destructive: var(--cb-fail);
+  --border: var(--cb-line);
+  --input: var(--cb-line-strong);
+  --ring: var(--cb-accent);
+}
+
+@layer base {
+  * {
+    border-color: var(--cb-line);
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--cb-surface);
+    color: var(--cb-ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  #root {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--cb-accent) 25%, transparent);
+  }
+}
