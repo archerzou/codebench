@@ -9,7 +9,22 @@ updates:
     schedule:
       interval: "weekly"
   - package-ecosystem: "docker"
-    directories: ["/src/Web.Api", "/src/Worker"]
+    directories: ["/src/Web.Api", "/src/Worker", "/apps/web", "/apps/marketing"]
     schedule:
       interval: "weekly"
-  # Phase 1: add npm for /apps/web and /apps/marketing once they have package.json.
+  # Frontends (build plan 1.10). Minor/patch updates are grouped into one PR per app to keep the noise down;
+  # majors arrive one by one so breaking changes (e.g. ESLint 10, TypeScript 7 — see tracker 1.8.1) are visible.
+  - package-ecosystem: "npm"
+    directory: "/apps/web"
+    schedule:
+      interval: "weekly"
+    groups:
+      web-minor-and-patch:
+        update-types: ["minor", "patch"]
+  - package-ecosystem: "npm"
+    directory: "/apps/marketing"
+    schedule:
+      interval: "weekly"
+    groups:
+      marketing-minor-and-patch:
+        update-types: ["minor", "patch"]

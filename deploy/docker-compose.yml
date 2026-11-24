@@ -2,7 +2,7 @@
 #
 # Profiles keep `up` working while the project is built phase by phase:
 #   (none)    traefik, postgres, redis, nats, observability      <- infra, always on
-#   app       api, web, marketing                                <- Phase 1
+#   app       api-migrate (one-shot), api, web, marketing        <- Phase 1
 #   grading   worker, sandbox-daemon                             <- Phase 2
 #   backup    db-backup                                          <- Phase 4
 #
@@ -16,6 +16,27 @@ name: codebench
 x-otel-env: &otel-env
   OTEL_EXPORTER_OTLP_ENDPOINT: http://observability:4317
   OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+
+# Shared by `api` and the one-shot `api-migrate` (same image, same configuration).
+x-api-env: &api-env
+  <<: *otel-env
+  ASPNETCORE_ENVIRONMENT: Production
+  ASPNETCORE_HTTP_PORTS: "8080"
+  OTEL_SERVICE_NAME: codebench-api
+  # GSS Encryption Mode=Disable: Postgres here uses password auth; without it Npgsql probes Kerberos and the
+  # aspnet image (no libgssapi_krb5) logs "Cannot load library libgssapi_krb5.so.2" on every start.
+  ConnectionStrings__Database: Host=postgres;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};GSS Encryption Mode=Disable
+  ConnectionStrings__Redis: redis:6379,password=${REDIS_PASSWORD}
+  ConnectionStrings__Nats: nats://${NATS_USER}:${NATS_PASSWORD}@nats:4222
+  Clerk__Issuer: ${CLERK_ISSUER}
+  Clerk__SecretKey: ${CLERK_SECRET_KEY}
+  Clerk__WebhookSecret: ${CLERK_WEBHOOK_SECRET}
+  Clerk__AuthorizedParties__0: ${APP_URL}
+  Cors__AllowedOrigins__0: ${APP_URL}
+  Cors__AllowedOrigins__1: ${MARKETING_URL}
+  Admin__BootstrapEmails__0: ${ADMIN_BOOTSTRAP_EMAIL}
+  Admin__ApiKey: ${ADMIN_API_KEY}
+  Payments__Provider: ${PAYMENTS_PROVIDER:-none}
 
 services:
   traefik:
@@ -67,33 +88,35 @@ services:
       - traefik.http.routers.web.rule=Host(`app.codebench.localhost`)
       - traefik.http.services.web.loadbalancer.server.port=80
 
+  # One-shot: apply migrations, then seed roles + problems (both idempotent; seeding never overwrites admin
+  # edits), then exit. Production never migrates on startup (DM-06), so `api` waits for this to succeed.
+  # Same image as `api`; deploy/update.sh can still run `docker compose run --rm api --migrate` explicitly.
+  api-migrate:
+    profiles: [app]
+    image: ghcr.io/${GHCR_OWNER}/codebench-api:${TAG:-latest}
+    command: ["--migrate", "--seed"]
+    restart: "no"
+    environment: *api-env
+    volumes:
+      - ../problems:/problems:ro
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }   # not service_started: a loading Redis rejects the seeder's cache invalidation
+      nats: { condition: service_started }
+    networks: [backend]
+
   api:
     profiles: [app]
     image: ghcr.io/${GHCR_OWNER}/codebench-api:${TAG:-latest}
     build: { context: .., dockerfile: src/Web.Api/Dockerfile }
-    environment:
-      <<: *otel-env
-      ASPNETCORE_ENVIRONMENT: Production
-      ASPNETCORE_HTTP_PORTS: "8080"
-      OTEL_SERVICE_NAME: codebench-api
-      ConnectionStrings__Database: Host=postgres;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
-      ConnectionStrings__Redis: redis:6379,password=${REDIS_PASSWORD}
-      ConnectionStrings__Nats: nats://${NATS_USER}:${NATS_PASSWORD}@nats:4222
-      Clerk__Issuer: ${CLERK_ISSUER}
-      Clerk__SecretKey: ${CLERK_SECRET_KEY}
-      Clerk__WebhookSecret: ${CLERK_WEBHOOK_SECRET}
-      Clerk__AuthorizedParties__0: ${APP_URL}
-      Cors__AllowedOrigins__0: ${APP_URL}
-      Cors__AllowedOrigins__1: ${MARKETING_URL}
-      Admin__BootstrapEmails__0: ${ADMIN_BOOTSTRAP_EMAIL}
-      Admin__ApiKey: ${ADMIN_API_KEY}
-      Payments__Provider: ${PAYMENTS_PROVIDER:-none}
+    environment: *api-env
     volumes:
       - ../problems:/problems:ro  # seed data: `docker compose run --rm api --seed`
     depends_on:
+      api-migrate: { condition: service_completed_successfully }
       postgres: { condition: service_healthy }
       nats: { condition: service_started }
-      redis: { condition: service_started }
+      redis: { condition: service_healthy }
     networks: [edge, backend]
     labels:
       - traefik.enable=true
@@ -147,6 +170,17 @@ services:
   redis:
     image: redis:7-alpine
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD}   # lets the healthcheck's redis-cli authenticate without -a on the command line
+    # Healthy = accepts commands. While Redis loads its dump it answers "LOADING ..." instead of PONG, so a
+    # container that has merely started doesn't count; api-migrate (--seed invalidates the problems cache tag) and
+    # api (RoleSeeder invalidates the permissions tag at start-up) wait for this.
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
     networks: [backend]
 
   nats:

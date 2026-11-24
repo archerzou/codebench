@@ -7,7 +7,7 @@ tests, `hiddenTestCount`); results from `GET /submissions/{id}` (Phase 2).
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│ codebench▍   Problems                                          ◐ theme   [ avatar ]      │
+│ [›▪]codebench Problems                                         ◐ theme   [ avatar ]      │
 ├───────────────────────────────────┬──────────────────────────────────────────────────────┤
 │ ‹ Problems                        │  Solution.cs                    ⟲ Reset   ⌘↵ Run  [ Submit ] │  toolbar
 │                                   ├──────────────────────────────────────────────────────┤

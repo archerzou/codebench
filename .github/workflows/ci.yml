@@ -24,21 +24,37 @@ jobs:
         if: always()
         with: { name: dotnet-test-results, path: TestResults }
 
-  # Phase 1: enable once apps/web and apps/marketing are scaffolded (needs package-lock.json).
-  # frontend:
-  #   runs-on: ubuntu-latest
-  #   strategy:
-  #     matrix: { app: [web, marketing] }
-  #   defaults:
-  #     run: { working-directory: apps/${{ matrix.app }} }
-  #   steps:
-  #     - uses: actions/checkout@v5
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version: 24
-  #         cache: npm
-  #         cache-dependency-path: apps/${{ matrix.app }}/package-lock.json
-  #     - run: npm ci
-  #     - run: npm run lint --if-present
-  #     - run: npm test --if-present -- --run
-  #     - run: npm run build
+  # Build plan 1.10 / FE-12: lint, type-check, test and build both frontends.
+  # web:       eslint (zero warnings) → vitest → tsc -b + vite build
+  # marketing: astro check → gen-problems + astro build + verify-dist (fails on any hidden-test / reference leak)
+  # Both builds read ../../docs/design/tokens.css (and marketing ../../problems) from the checkout.
+  frontend:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [web, marketing]
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.app }}   # block style: `${{ }}` inside a `{ }` flow map is invalid YAML
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/${{ matrix.app }}/package-lock.json
+      - run: npm ci
+      - run: npm run lint --if-present
+      - run: npm run check --if-present
+      - run: npm test --if-present -- --run
+      - run: npm run build
+
+  # Build plan 1.10: the compose `app` profile images build (Dockerfiles + additional build contexts
+  # `design` / `problems`). Build only — pushing to GHCR is images.yml in Phase 3.
+  compose-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build api, web and marketing images
+        run: docker compose -f deploy/docker-compose.yml --env-file deploy/.env.example --profile app build

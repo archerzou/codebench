@@ -45,23 +45,34 @@ jobs:
   frontend:
     runs-on: ubuntu-latest
     strategy:
-      matrix: { app: [web, marketing] }
+      fail-fast: false
+      matrix:
+        app: [web, marketing]
     defaults:
-      run: { working-directory: apps/${{ matrix.app }} }
+      run:
+        working-directory: apps/${{ matrix.app }}   # block style: `${{ }}` inside a `{ }` flow map is invalid YAML
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: apps/${{ matrix.app }}/package-lock.json
       - run: npm ci
-      - run: npm run lint --if-present
-      - run: npm test --if-present -- --run
-      - run: npm run build
+      - run: npm run lint --if-present      # web: eslint, zero warnings
+      - run: npm run check --if-present     # marketing: astro check
+      - run: npm test --if-present -- --run # web: vitest
+      - run: npm run build                  # marketing's build ends with verify-dist (leak guard)
+
+  compose-build:                            # the compose `app` images still build (additional build contexts)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker compose -f deploy/docker-compose.yml --env-file deploy/.env.example --profile app build
 ```
 
-GitHub's `ubuntu-latest` runners include Docker, so Testcontainers works with no extra setup.
+GitHub's `ubuntu-latest` runners include Docker, so Testcontainers works with no extra setup. The real file is
+`.github/workflows/ci.yml`; this is the shape it follows.
 
 ## .github/workflows/images.yml
 

@@ -1,9 +1,23 @@
 ---
-/** Lowercase `codebench` in the mono font + an accent block caret (brief) — same as apps/web Wordmark. */
+/**
+ * CodeBench lockup — same as apps/web Wordmark: the mark (prompt chevron + block cursor on an accent tile) and
+ * lowercase `codebench` in the mono font. Geometry from docs/design/brand/mark.svg (check-rules FE-18).
+ */
 type Props = { class?: string };
 const { class: className = '' } = Astro.props;
 ---
 
-<span class:list={['font-mono text-base font-semibold tracking-tight text-ink', className]}>
-  codebench<span aria-hidden="true" class="text-accent">▍</span>
+<span class:list={['inline-flex items-center gap-2', className]}>
+  <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false" class="size-5 shrink-0">
+    <rect width="32" height="32" rx="7" class="fill-accent"></rect>
+    <path
+      d="M9.5 10.5 15 16l-5.5 5.5"
+      fill="none"
+      stroke-width="3"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      class="stroke-on-accent"></path>
+    <rect x="17.5" y="14.5" width="7" height="8" rx="1.25" class="fill-on-accent"></rect>
+  </svg>
+  <span class="font-mono text-base font-semibold tracking-tight text-ink">codebench</span>
 </span>

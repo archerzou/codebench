@@ -372,7 +372,12 @@ script, no toggle). Dockerfile uses additional build contexts `design` + `proble
 
 Uncomment the `frontend` job in `.github/workflows/ci.yml` and add `npm` entries to
 `.github/dependabot.yml`. Add `127.0.0.1 app.codebench.localhost api.codebench.localhost codebench.localhost`
-to the hosts file — Windows PowerShell 5.1 doesn't resolve `*.localhost`.
+to the hosts file — Windows PowerShell 5.1 doesn't resolve `*.localhost` (`scripts/add-hosts.ps1`, elevated).
+
+The compose stack runs the API as Production, which never migrates on startup *[DM-06]*: a one-shot
+`api-migrate` service (same image, `--migrate --seed`) runs first and `api` depends on it with
+`service_completed_successfully`. CI also gets a `compose-build` job so the `app` images (and their additional
+build contexts) keep building on every PR.
 
 ### 1.11 Tests
 

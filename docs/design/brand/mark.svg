@@ -1,0 +1,11 @@
+<!-- CodeBench mark — source of truth (docs/design/brand/README.md). 32 × 32 grid.
+     A prompt chevron and a block cursor on an accent tile: a cursor waiting for input.
+     Colours here are the light-theme tokens (--cb-accent / --cb-on-accent); the in-app components use the
+     CSS variables so the mark follows light/dark. The geometry (path d, cursor rect) must stay identical in
+     favicon.svg, apps/web/src/components/Wordmark.tsx and apps/marketing/src/components/Wordmark.astro
+     (check-rules FE-18). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="7" fill="#0a6670"/>
+  <path d="M9.5 10.5 15 16l-5.5 5.5" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="17.5" y="14.5" width="7" height="8" rx="1.25" fill="#ffffff"/>
+</svg>

@@ -22,6 +22,7 @@ in `tokens.css` (FE-16). Variants are `cva` + `cn()` (FE-11). Icons are `lucide-
 | `CodePane` | own (`bg-surface-code`) | `Copy`, `Check` |
 | `ThemeToggle` | `dropdown-menu` + zustand `useThemeStore` | `Sun`, `Moon`, `Monitor` |
 | `Kbd` | own | — |
+| `Wordmark` | own — inline SVG mark + `codebench` ([brand/README.md](brand/README.md)) | — (the mark is drawn, not a Lucide icon) |
 | Dialogs, menus, tooltips, selects, inputs | `dialog`, `dropdown-menu`, `tooltip`, `select`, `input`, `label` | — |
 
 | Component | Variants / props | States | Notes |

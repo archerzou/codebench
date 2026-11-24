@@ -40,10 +40,11 @@ No exclamation marks in product UI. Marketing copy may be warmer, never hype.
 
 ## Identity
 
-- **Wordmark:** lowercase `codebench` set in the UI mono font, followed by a block caret `▍` in the
-  accent colour — a cursor waiting for input. No separate pictorial logo for now.
+- **Mark & wordmark:** a prompt chevron `›` and a block cursor on an accent tile — a cursor waiting for
+  input — followed by lowercase `codebench` in the UI mono font. The mark is also the favicon and app icon.
+  Geometry, colours, files and usage rules: [brand/README.md](brand/README.md); one `<Wordmark />` in each app.
 - **Accent:** deep teal (light) / bright teal (dark). Used for primary actions, links, focus rings,
-  and the caret — nowhere else.
+  and the brand mark — nowhere else.
 - **Status colours** (pass green, fail red, warn amber) are reserved for results and always paired
   with an icon and a word (FE-10).
 - **Type:** system UI sans for interface text; a monospace face (JetBrains Mono, OFL — self-hosted
