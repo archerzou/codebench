@@ -9,7 +9,7 @@ COPY . .
 COPY --from=design . /repo/docs/design
 RUN npm run build
 
-FROM nginx:1.27-alpine
+FROM nginx:1.29-alpine
 COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
 # The dev stub is replaced at start by 40-config.sh from the container's environment.
 RUN rm -f /usr/share/nginx/html/config.js
