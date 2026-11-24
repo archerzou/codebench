@@ -15,6 +15,6 @@ ARG APP_URL=http://app.codebench.localhost
 ENV SITE_URL=$SITE_URL PUBLIC_APP_URL=$APP_URL
 RUN npm run build
 
-FROM nginx:1.27-alpine
+FROM nginx:1.29-alpine
 COPY --from=build /repo/apps/marketing/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
