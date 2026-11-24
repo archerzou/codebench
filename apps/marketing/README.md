@@ -30,6 +30,34 @@ Vite app put `PUBLIC_APP_URL=http://localhost:5173` in `apps/marketing/.env`, gi
 - **Deep links** carry `?entry=<page-slot>` (`home-hero`, `home-try-1`, `problem-page`, `site-header`, …) via
   `appLink()` in `src/config.ts` — the only file that reads `import.meta.env`.
 
+## Screenshots
+
+All captures live in [docs/images/screenshots/](../../docs/images/screenshots/) (naming and how to retake them:
+its README).
+
+**Home** — hero, an example result with budget bars, what gets measured, tracks, pricing teaser.
+
+| Light (full page) | Dark |
+| --- | --- |
+| ![Home page, light theme, full page](../../docs/images/screenshots/marketing-home-light.png) | ![Home page, dark theme](../../docs/images/screenshots/marketing-home-dark.png) |
+
+**Catalog and problem pages** — generated from `problems/*.yaml`, summaries only; deep links into the app carry
+`?entry=`.
+
+| `/problems` | `/problems/sum-of-evens` |
+| --- | --- |
+| ![Problem catalog grouped by track](../../docs/images/screenshots/marketing-problems-light.png) | ![Problem page with limits, test counts and Solve in the editor](../../docs/images/screenshots/marketing-problem-detail-light.png) |
+
+**Content pages**
+
+| How it works (full page) | Pricing | Blog post |
+| --- | --- | --- |
+| ![How it works page](../../docs/images/screenshots/marketing-how-it-works-light.png) | ![Pricing page with Free and Pro](../../docs/images/screenshots/marketing-pricing-light.png) | ![Blog post](../../docs/images/screenshots/marketing-blog-post-light.png) |
+
+**Mobile** — the nav collapses into a native `<details>` menu (no JavaScript):
+
+![Mobile menu open](../../docs/images/screenshots/marketing-mobile-menu-light.png)
+
 ## Docker
 
 Build context is this folder; `docs/design` and `problems` come in as additional build contexts
