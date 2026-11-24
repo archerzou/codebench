@@ -13,7 +13,7 @@ jobs:
   dotnet:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v5
         with: { dotnet-version: '10.0.x' }
       - run: dotnet restore CodeBench.slnx
@@ -38,7 +38,7 @@ jobs:
       run:
         working-directory: apps/${{ matrix.app }}   # block style: `${{ }}` inside a `{ }` flow map is invalid YAML
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v5
         with:
           node-version: 24
@@ -55,6 +55,6 @@ jobs:
   compose-build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Build api, web and marketing images
         run: docker compose -f deploy/docker-compose.yml --env-file deploy/.env.example --profile app build
