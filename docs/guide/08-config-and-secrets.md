@@ -104,7 +104,7 @@ ADMIN_API_KEY=                       # SECRET
 | --- | --- | --- |
 | `ASPNETCORE_ENVIRONMENT` | `Production` in Compose, `Development` locally | No |
 | `ASPNETCORE_HTTP_PORTS` | `8080` | No |
-| `ConnectionStrings__Database` | `Host=postgres;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}` | Yes |
+| `ConnectionStrings__Database` | `Host=postgres;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};GSS Encryption Mode=Disable` (password auth; stops Npgsql probing Kerberos, which the aspnet image lacks) | Yes |
 | `ConnectionStrings__Redis` | `redis:6379,password=${REDIS_PASSWORD}` | Yes |
 | `ConnectionStrings__Nats` | `nats://${NATS_USER}:${NATS_PASSWORD}@nats:4222` | Yes |
 | `Clerk__Issuer` | `${CLERK_ISSUER}` | No |

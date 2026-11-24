@@ -227,6 +227,49 @@ if (Test-Path $webSrc) {
 }
 else { Skip 'FE-*' 'Frontend rules' 'apps/web not scaffolded yet' }
 
+# FE-18: one brand. Icons in both apps are byte-identical copies of docs/design/brand/, and every place that
+# draws the mark uses the same geometry as docs/design/brand/mark.svg.
+$brandDir = Join-Path $root 'docs\design\brand'
+if (Test-Path $brandDir) {
+    $brandHits = @()
+    foreach ($icon in 'favicon.svg', 'apple-touch-icon.png') {
+        $source = Join-Path $brandDir $icon
+        if (-not (Test-Path $source)) { $brandHits += "docs/design/brand/$icon missing"; continue }
+        $sourceHash = (Get-FileHash $source).Hash
+        foreach ($app in 'web', 'marketing') {
+            $copy = Join-Path $root "apps\$app\public\$icon"
+            if (-not (Test-Path (Join-Path $root "apps\$app"))) { continue }
+            if (-not (Test-Path $copy)) { $brandHits += "apps/$app/public/$icon missing (copy it from docs/design/brand/)" }
+            elseif ((Get-FileHash $copy).Hash -ne $sourceHash) { $brandHits += "apps/$app/public/$icon differs from docs/design/brand/$icon" }
+        }
+    }
+    $geometry = @('M9.5 10.5 15 16l-5.5 5.5', 'x="17.5" y="14.5" width="7" height="8" rx="1.25"', 'rx="7"')
+    $markFiles = @(
+        (Join-Path $brandDir 'mark.svg'),
+        (Join-Path $brandDir 'favicon.svg'),
+        (Join-Path $root 'apps\web\src\components\Wordmark.tsx'),
+        (Join-Path $root 'apps\marketing\src\components\Wordmark.astro')
+    ) | Where-Object { Test-Path $_ }
+    foreach ($file in $markFiles) {
+        $text = [IO.File]::ReadAllText($file)
+        foreach ($g in $geometry) {
+            if (-not $text.Contains($g)) { $brandHits += "$($file.Substring($root.Length + 1)): mark geometry '$g' missing (docs/design/brand/mark.svg)" }
+        }
+    }
+    # The old text-caret logo (U+258D). Read as UTF-8 explicitly: PS 5.1's Select-String reads BOM-less UTF-8 as
+    # ANSI, so a Find() here would never match the glyph.
+    $caret = [string][char]0x258D
+    $appSources = @(Get-SourceFiles $webSrc '*.ts*') + @(Get-SourceFiles (Join-Path $marketingDir 'src') '*.astro')
+    foreach ($file in $appSources) {
+        $lineNo = 0
+        foreach ($line in [IO.File]::ReadAllLines($file.FullName, [Text.Encoding]::UTF8)) {
+            $lineNo++
+            if ($line.Contains($caret)) { $brandHits += "$($file.Name):$lineNo  text-caret logo - use <Wordmark />" }
+        }
+    }
+    Report 'FE-18' 'One brand: icons = docs/design/brand copies, same mark geometry, no text-caret logo' $brandHits
+}
+
 if (Test-Path (Join-Path $marketingDir 'src')) {
     $site = @('*.astro', '*.ts', '*.mjs', '*.mdx', '*.css') | ForEach-Object { Get-SourceFiles (Join-Path $marketingDir 'src') $_ }
     $site = @($site | Where-Object { $_.FullName -notmatch '\\content\\problems\\' })   # generated summaries

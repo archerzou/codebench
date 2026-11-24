@@ -11,7 +11,7 @@ One Compose project runs all 15 services on your machine: `docker compose up -d`
 | Node.js | 24 LTS | Frontends; also meets REA's requirement |
 | Git + GitHub account | – | GHCR images and Actions |
 
-`*.localhost` names resolve to 127.0.0.1 in Chrome, Edge and Firefox without any setup. Command-line tools on Windows may not resolve them; if `curl http://api.codebench.localhost` fails, add lines like `127.0.0.1 api.codebench.localhost` to your hosts file.
+`*.localhost` names resolve to 127.0.0.1 in Chrome, Edge and Firefox without any setup, and so does `curl.exe` 7.85+. Windows PowerShell 5.1 (`Invoke-WebRequest`), .NET's resolver and some other tools don't: run `scripts/add-hosts.ps1` once (it asks for administrator rights through UAC if needed) — it writes a marked, idempotent block mapping `codebench`, `app`, `api`, `grafana` and `traefik.codebench.localhost` to 127.0.0.1 (`-Remove` takes it out again).
 
 ## Service map
 
@@ -297,10 +297,11 @@ Ports are bound to `127.0.0.1` only. Never publish the DinD port on all interfac
 
 | Task | Command |
 | --- | --- |
-| Start everything (build locally) | `docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build` |
+| Start the Phase 1 app (build locally) | `docker compose -f deploy/docker-compose.yml --env-file deploy/.env --profile app up -d --build` — add `-f deploy/docker-compose.dev.yml` (after the base file) to keep the infra ports for host-run `dotnet watch` |
+| Start everything (build locally) | `docker compose -f deploy/docker-compose.yml --env-file deploy/.env --profile app --profile grading up -d --build` |
 | Start from CI-built images | `docker compose -f deploy/docker-compose.yml --env-file deploy/.env pull && ... up -d` |
 | Tail API and worker logs | `docker compose -f deploy/docker-compose.yml logs -f api worker` |
-| Apply EF migrations | Template applies them at startup in Development; for Production, run a one-off: `docker compose ... run --rm api --migrate` (add a flag in `Program.cs`) |
+| Apply EF migrations | Development applies them at startup. The compose stack runs Production, so the one-shot `api-migrate` service runs `--migrate --seed` on every `up` and `api` starts only after it exits 0. By hand: `docker compose ... run --rm api --migrate` |
 | Seed problems | `docker compose ... run --rm api --seed` |
 | Inspect JetStream | `docker run --rm --network codebench_backend natsio/nats-box nats -s nats://nats:4222 stream ls` |
 | List live sandboxes | `docker compose ... exec sandbox-daemon docker ps` |
@@ -308,6 +309,9 @@ Ports are bound to `127.0.0.1` only. Never publish the DinD port on all interfac
 | Reset everything | `docker compose ... down -v` (deletes volumes: data, queues, sandbox image cache) |
 
 ## Smoke check after `up`
+
+Phase 1 (`--profile app`) covers the first three lines and the health check; the run, trace and backup lines need
+the `grading` and `backup` profiles (Phases 2 and 4).
 
 - [ ] `http://codebench.localhost` shows the marketing site and its "Start free" link opens the app.
 - [ ] `http://app.codebench.localhost` loads; sign-in with Clerk works and redirects back.

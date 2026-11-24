@@ -8,7 +8,7 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 **Legend:** `[ ]` todo · `[x]` done · `[~]` in progress · `[!]` blocked (add a note in the Blockers Log)
 **Tracks:** 🔍 = REA self-audit (build plan Appendix D) · 🎨 = original design (`docs/design/`)
 
-**Status:** Phase 1 in progress — 1.0–1.3 ✅, 1.4 code ✅, 1.5 ✅, 1.6 ✅ (2026-11-21). **Open: 1.4.3** (Clerk session-token claims + webhook test — yours, not done). 1.7 ✅ (2026-11-22). 1.8 ✅ (2026-11-23). 1.9 ✅ (2026-11-24). Next: 1.10 Compose `app` profile & CI frontend job
+**Status:** Phase 1 in progress — 1.0–1.3 ✅, 1.4 code ✅, 1.5 ✅, 1.6 ✅ (2026-11-21). **Open: 1.4.3** (Clerk session-token claims + webhook test — yours, not done). 1.7 ✅ (2026-11-22). 1.8 ✅ (2026-11-23). 1.9 ✅ (2026-11-24). 1.10 ✅ (2026-11-25). Next: 1.11 Tests
 **Started:** 2026-11-17 **Last updated:** 2026-11-23
 
 ---
@@ -18,7 +18,7 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 | Phase | Title | Items | Done | Gate |
 |---|---|---|---|---|
 | 0 | Setup & self-audit baseline | 23 | 23 | Release build clean, tests green, infra `up`, RA-01..03 ok |
-| 1 | Walking Skeleton | 60 | 50 | Signed in via Traefik, problem visible in own design; RA-04..07, 09 ok |
+| 1 | Walking Skeleton | 60 | 53 | Signed in via Traefik, problem visible in own design; RA-04..07, 09 ok |
 | 2 | Algorithms Grading | 57 | 0 | Algorithms graded with time + allocations; hostile suite; RA-01/03 on publish output |
 | 3 | CI/CD | 20 | 1 | Merge → GHCR images; `update.sh` deploys + rolls back; `rea-audit` CI job |
 | 3A | Admin Console | 28 | 0 | Create → validate → publish → learner solves; admin code lazy-only |
@@ -26,7 +26,7 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 | 5 | Database Grader | 13 | 0 | EF Core problem graded on plan rules, SQL shown |
 | 6 | More Graders | 11 | 0 | One problem per grader live |
 | 7 | Product Polish | 10 | 0 | Progress, paths, plans, sandbox payment |
-| | **Total** | **239** | **74** | |
+| | **Total** | **239** | **77** | |
 
 ---
 
@@ -157,9 +157,9 @@ Every phase ends with a **Gate** — commands that must pass before you move on.
 - [x] **1.9.5** Deep links with `?entry=`; Dockerfile (additional build contexts `design` + `problems`, final image `dist/` only) + nginx — `appLink()` in `src/config.ts` (only `import.meta.env` reader); image built via compose and smoke-tested: pages 200, unknown + deferred problems 404 (Astro 404 page), security headers, `/_astro/` immutable, HTML `no-cache`
 
 ### 1.10 Compose & CI
-- [ ] **1.10.1** `--profile app` builds and serves api, web, marketing through Traefik
-- [ ] **1.10.2** CI frontend job enabled; Dependabot npm entries added
-- [ ] **1.10.3** Hosts-file entries for `*.codebench.localhost` (PowerShell 5.1 doesn't resolve them)
+- [x] **1.10.1** `--profile app` builds and serves api, web, marketing through Traefik — one-shot `api-migrate` (`--migrate --seed`, `api` waits for `service_completed_successfully`); `x-api-env` anchor shared; `GSS Encryption Mode=Disable` (Kerberos probe noise). Smoke-tested via Traefik: site + problem page, app catalog + editor (real `GET /problems*` from `api.codebench.localhost`, no console errors in Chromium), `config.js` public values only, `/health` Healthy (postgres/redis/nats), `/me` 401, CORS preflight from the app origin allowed, Traefik dashboard. Clerk sign-in through Traefik not exercised (needs your browser session — part of the Phase 1 gate)
+- [x] **1.10.2** CI frontend job enabled; Dependabot npm entries added — matrix web/marketing: `npm ci` → lint → `check` → test → build (marketing build includes `verify-dist`); all steps run green locally; new `compose-build` job builds the three `app` images from `.env.example`; Dependabot npm (minor+patch grouped per app) + docker for `apps/web`, `apps/marketing`. Fixed invalid YAML from the old snippet (`${{ }}` inside a `{ }` flow map) here and in guide 06
+- [x] **1.10.3** Hosts-file entries for `*.codebench.localhost` (PowerShell 5.1 doesn't resolve them) — `scripts/add-hosts.ps1` (marked idempotent block, `-Remove`, self-elevates via UAC when not admin). Run 2026-11-25: all five names → 127.0.0.1 for .NET; `Invoke-WebRequest` (PS 5.1) gets 200 from `api…/health`, `app…`, `codebench.localhost`
 
 ### 1.11 Tests
 - [x] **1.11.1** Unit: handler tests for all four Phase 1 slices (`GetProblems`, `GetProblem`, `GetMe`, `HandleClerkWebhook`) + validator tests for the one command
@@ -566,6 +566,10 @@ Record every deviation from `build_plan.md` / the guide and why — future-you w
 | 2026-11-21 | `SeedCommand` maps every unexpected failure to exit 1 (justified CA1031 at the CLI boundary) | DB unreachable previously crashed with exit 139; scripts and Compose need the documented 0/1/2 |
 | 2026-11-20 | Base `appsettings.json` gets a Serilog Console sink | Production had **no** logging configured (only Development did): containers and `--seed` were silent. OTLP logs in Production remain Phase 4 |
 | 2026-11-20 | Signed-in work endpoints use `HasPermission(...)` instead of bare `RequireAuthorization()` | `IsDisabled` is enforced in the permission handler (guide 09); bare authorization would let disabled users submit |
+| 2026-11-25 | New brand mark: prompt chevron + block cursor on an accent tile; one source in `docs/design/brand/` (mark, adaptive SVG favicon, apple-touch-icon); `<Wordmark />` draws it inline in both apps; rule + check FE-18 | The text caret `▍` rendered differently per font, sat detached from the name, and the favicon was a separate design. A full-height bar read as the media "skip" icon at 16 px, an underscore as the generic terminal icon — the baseline block cursor stays distinctive. Probe-testing FE-18 found two bugs in the check itself (`Rel` undefined at that point; PS 5.1 reads BOM-less UTF-8 as ANSI) |
+| 2026-11-25 | Compose `api-migrate` one-shot (`--migrate --seed`) gates `api` via `service_completed_successfully` | Production never migrates on startup (DM-06) and the role seeder needs the schema; `--profile app up` now works on a fresh volume. Seeding is insert-only, so re-running on every `up` is safe; `update.sh`'s explicit `run --rm api --migrate` still works |
+| 2026-11-25 | CI `compose-build` job (build only, from `.env.example`) | The frontend Dockerfiles depend on additional build contexts; nothing else would catch a broken image build before Phase 3's `images.yml` |
+| 2026-11-25 | Hosts entries via `scripts/add-hosts.ps1` instead of editing the hosts file for you | System file outside the repo, needs elevation; the script is idempotent and reversible |
 | 2026-11-24 | Marketing catalog publishes only problems whose grader is live (`LIVE_GRADERS` in `gen-problems.mjs` mirrors `ProblemSeeder.ImplementedGraders`) | Deferred problems aren't in the DB, so their "Solve in the editor" link would 404 in the app |
 | 2026-11-24 | `gen-problems.mjs` uses a field allow-list + `verify-dist.mjs` post-build leak guard | Deny-lists fail open when `problem.yaml` grows a field; the guard turns FE-13/RA-06 into a build failure on every local and Docker build |
 | 2026-11-24 | npm scripts chain gen → build → verify explicitly instead of `prebuild`/`postbuild` | npm 12 (local) didn't run the `pre*` hook — the catalog folder was missing; explicit chaining works on every npm version |

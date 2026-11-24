@@ -6,7 +6,7 @@ Low fidelity. Boxes are regions, not pixels. Data comes from `GET /problems` (`P
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────────────────────────┐
-│ codebench▍   Problems                                          ◐ theme   [ Sign in ]     │  header 48px
+│ [›▪]codebench Problems                                         ◐ theme   [ Sign in ]     │  header 48px
 ├──────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                          │
 │  Problems                                                      6 problems                │  h1 + count

@@ -831,6 +831,16 @@ one exists, otherwise `@/components/ui/*`.
 
 ---
 
+### FE-18 🟡 One brand: the mark and icons come from `docs/design/brand/`
+
+The logo is `<Wordmark />` in each app (mark + `codebench`), never the name typed with a text caret. The mark's
+geometry is defined once in `docs/design/brand/mark.svg`; the favicon and both `Wordmark` components use exactly
+that geometry and the accent / on-accent roles. `favicon.svg` and `apple-touch-icon.png` in `apps/web/public` and
+`apps/marketing/public` are byte-identical copies of `docs/design/brand/` — change the source, then copy.
+**Check:** `check-rules.ps1` FE-18 (hash compare, geometry strings, no `▍` in app sources).
+
+---
+
 ### FE-17 🟡 Icons from lucide-react, named imports only
 
 `import { CircleCheck } from 'lucide-react'` — never `import * as Icons` or a string-keyed icon lookup
@@ -1260,6 +1270,7 @@ npm --prefix apps/web run lint; npm --prefix apps/web test -- --run   # once the
 | 1.0 | 2026-11-18 | Initial rulebook for CodeBench: VSA template conventions + guide 00–09 boundaries + frontend standards; `scripts/check-rules.ps1` |
 | 1.1 | 2026-11-19 | Part 12 Naming (NM-01…NM-14) + 10 automated checks; `.editorconfig` naming enforced (IDE1006); XC-02 check fixed (was vacuous: `#` lines skipped, `tests/` not scanned); TS-02 points to NM-11; KD-01 closed |
 | 1.2 | 2026-11-22 | Frontend stack adds shadcn/ui, lucide-react, zustand: FE-15 (zustand = client UI state only), FE-16 (shadcn vendored + re-skinned via the token bridge), FE-17 (lucide named imports); FE-02 tree, FE-09/FE-11/NM-13 updated; KD-07 (`components/ui/` naming exception); RA-05 also rejects devtools hooks; check-rules FE-11/15/17 |
+| 1.4 | 2026-11-25 | FE-18 one brand: mark + icons from `docs/design/brand/` (favicon, apple-touch-icon, `Wordmark` geometry); check-rules FE-18 (probe-tested) |
 | 1.3 | 2026-11-23 | FE-13 extended: Astro uses Tailwind v4 via `@tailwindcss/vite`, the same `tokens.css` by relative import, `.astro` components mirroring the app's variants, `lucide-static`, no client framework; additional Docker build contexts; check-rules FE-11 + FE-13 cover `apps/marketing` |
 
 > **Keeping this current:** when you accept a new trade-off, add it to *Known Deviations* with an exit
